@@ -22,6 +22,11 @@ function draw(d) {
   .attr('fill', 'none')
 }
 
+var path = pathgl.init()
 
 paths.forEach(draw)
-paths.forEach(pathgl.init().draw)
+paths.forEach(function (d, i) {
+  path
+  .stroke([.5, Math.random(), Math.random()])
+  .draw(d)
+})

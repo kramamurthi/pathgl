@@ -1,20 +1,19 @@
 //stroke
-  // thickness
-  // dasharray
-  // length
-  // opacity
-  // color
+// thickness
+// dasharray
+// length
+// opacity
+// color
 //fill
-  // pattern
-  // gradient + shaders
-  // color
-  // opacity
-
-
+// pattern
+// gradient + shaders
+// color
+// opacity
 var pathgl = {}
   , pmatrix = [0.0031446540880503146, 0, 0, 0, 0, 0.004, 0, 0, 0, 0, -1, 0, -1, -1, 0, 1]
   , log = console.log.bind(console)
   , canvas, ctx, program, pos
+  , r, g, b, stroke = [1, 1, 1]
 
 var actions = { m: moveTo
               , z: closePath
@@ -30,20 +29,29 @@ var actions = { m: moveTo
               }
 
 pathgl.fragment = [ "precision mediump float;"
-           , "void main(void) {"
-           , "gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);"
-           , "}"
-           ].join('\n')
+                  , "uniform float r;"
+                  , "uniform float g;"
+                  , "uniform float b;"
+                  , "void main(void) {"
+                  , "gl_FragColor = vec4(r, g, b, 1.0);"
+                  , "}"
+                  ].join('\n')
 
 pathgl.vertex = [ "attribute vec3 aVertexPosition;"
-           , "uniform mat4 uPMatrix;"
-           , "void main(void) {"
-           , "gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
-           , "}"
-           ].join('\n')
+                , "uniform mat4 uPMatrix;"
+                , "void main(void) {"
+                , "gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
+                , "}"
+                ].join('\n')
 
 pathgl.init = init
 pathgl.draw = draw
+
+pathgl.stroke = function (_) {
+  if (! _) return stroke
+  stroke = _
+  return this
+}
 
 function draw (str) {
   var split = str.split(/([A-Za-z])/)
@@ -86,6 +94,10 @@ function initShaders() {
   ctx.attachShader(program, fragmentShader)
   ctx.linkProgram(program)
 
+  r = ctx.getUniformLocation(program, 'r')
+  g = ctx.getUniformLocation(program, 'g')
+  b = ctx.getUniformLocation(program, 'b')
+
   if (! ctx.getProgramParameter(program, ctx.LINK_STATUS)) return log("Shader is broken")
 
   ctx.useProgram(program)
@@ -111,9 +123,20 @@ function addLine(x1, y1, x2, y2) {
 function render() {
   ctx.clear(ctx.COLOR_BUFFER_BIT)
 
+  ctx.uniform1f(r, stroke[0])
+  ctx.uniform1f(g, stroke[1])
+  ctx.uniform1f(b, stroke[2])
+
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
 
   for (var i = 0; i < lineBuffers.length; i++) {
+    dry(i)()
+    //setTimeout(dry(i), 500 * i)
+  }
+}
+
+function dry(i){
+  return function () {
     ctx.bindBuffer(ctx.ARRAY_BUFFER, lineBuffers[i])
     ctx.vertexAttribPointer(program.vertexPositionLoc, lineBuffers[i].itemSize, ctx.FLOAT, false, 0, 0)
     ctx.drawArrays(ctx.LINE_STRIP, 0, lineBuffers[i].numItems)
