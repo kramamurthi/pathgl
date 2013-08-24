@@ -12,8 +12,11 @@
 var pathgl = {}
   , pmatrix = [0.0031446540880503146, 0, 0, 0, 0, 0.004, 0, 0, 0, 0, -1, 0, -1, -1, 0, 1]
   , log = console.log.bind(console)
+  , stroke = [1, 1, 1]
+  , paths = []
+  , r, g, b
   , canvas, ctx, program, pos
-  , r, g, b, stroke = [1, 1, 1]
+  , lineBuffers
 
 var actions = { m: moveTo
               , z: closePath
@@ -58,6 +61,7 @@ function draw (str) {
               .map(function(d) { return d.trim().toLowerCase() })
               .filter(function(d) { return d })
     , i = 0, action, coords, j
+    paths.push(lineBuffers = [])
   while (i < split.length) {
     action = actions[split[i++]]
     coords = split[i++] || ''
@@ -108,8 +112,6 @@ function initShaders() {
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
 }
 
-var lineBuffers = [];
-
 function addLine(x1, y1, x2, y2) {
   var index = lineBuffers.push(ctx.createBuffer()) - 1
   var vertices = [x1, y1, 0, x2, y2, 0]
@@ -122,24 +124,25 @@ function addLine(x1, y1, x2, y2) {
 
 function render() {
   ctx.clear(ctx.COLOR_BUFFER_BIT)
-
-  ctx.uniform1f(r, stroke[0])
-  ctx.uniform1f(g, stroke[1])
-  ctx.uniform1f(b, stroke[2])
-
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
 
-  for (var i = 0; i < lineBuffers.length; i++) {
-    dry(i)()
-    //setTimeout(dry(i), 500 * i)
-  }
+  for(var j = 0; j < paths.length; j++ )
+    for (var i = 0; i < paths[j].length; i++)
+      setStroke(paths[j].rgb), dry(paths[j][i])()
 }
 
-function dry(i){
+function setStroke (rgb){
+  rgb = rgb || [1, 2, 3].map(Math.random)
+  ctx.uniform1f(r, rgb[0])
+  ctx.uniform1f(g, rgb[1])
+  ctx.uniform1f(b, rgb[2])
+}
+
+function dry(buffer){
   return function () {
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, lineBuffers[i])
-    ctx.vertexAttribPointer(program.vertexPositionLoc, lineBuffers[i].itemSize, ctx.FLOAT, false, 0, 0)
-    ctx.drawArrays(ctx.LINE_STRIP, 0, lineBuffers[i].numItems)
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
+    ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
+    ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
   }
 }
 

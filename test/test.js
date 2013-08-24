@@ -11,7 +11,7 @@ function appendPath(d) {
   path.d = d
 }
 
-var paths = [ 'm 0 0 l 10 10 60 60 70 400 z'
+var tests = [ 'm 0 0 l 10 10 60 60 70 400 z'
             , 'm 50 60 l 60 50 50 60 40 50 50 40 60 50 z'
             ].map(function (d) { return d.toUpperCase() })
 
@@ -24,8 +24,8 @@ function draw(d) {
 
 var path = pathgl.init()
 
-paths.forEach(draw)
-paths.forEach(function (d, i) {
+tests.forEach(draw)
+tests.forEach(function (d, i) {
   path
   .stroke([.5, Math.random(), Math.random()])
   .draw(d)
