@@ -11,8 +11,6 @@
 // color
 // opacity
 
-//99% usecase is d3 so add expose methods for naked later
-
 d3.queue = function (fn) {
   var args = [].slice.call(arguments, 1)
   d3.timer(function () {
@@ -22,6 +20,7 @@ d3.queue = function (fn) {
 }
 
 function pathgl (canvas) {
+  pathgl.init(canvas.node ? canvas.node() : canvas)
   canvas.datum().map(function (d, i) {
     if ('string' === typeof d) d = canvas.datum()[i] = { d: d }
     d.rgb = [1, 1, 1].map(Math.random)
@@ -53,22 +52,20 @@ var actions = { m: moveTo
               }
 
 pathgl.fragment = [ "precision mediump float;"
-                  , "uniform float r;"
-                  , "uniform float g;"
-                  , "uniform float b;"
+                  , "uniform float r, g, b;"
                   , "void main(void) {"
-                  , "gl_FragColor = vec4(r, g, b, 1.0);"
+                  , "  gl_FragColor = vec4(r, g, b, 1.0);"
                   , "}"
                   ].join('\n')
 
 pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "uniform mat4 uPMatrix;"
                 , "void main(void) {"
-                , "gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
+                , "  gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
                 , "}"
                 ].join('\n')
 
-pathgl.init = init
+pathgl.init = once(init)
 
 pathgl.stroke = function (_) {
   if (! _) return stroke
@@ -81,16 +78,16 @@ function draw (datum) {
     , split = str.split(/([A-Za-z])/)
               .map(function(d) { return d.trim().toLowerCase() })
               .filter(function(d) { return d })
-    , i = 0, action, coords, j
+    , i = 0, action, coords
 
   paths.push(lineBuffers = [])
-  paths[paths.length - 1].rgb = datum.rgb
+  var path = extend(paths[paths.length - 1], datum, { coords: [] })
 
   while (i < split.length) {
     action = actions[split[i++]]
-    coords = split[i++] || ''
+    path.coords.push(coords = split[i++] || '')
     if (! action.call) throw new Error(action + ' ' + split[i - 1] + ' is not yet implemented')
-    coords ? twoEach(coords.split(' '), action) : action(coords)
+    coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
   }
 }
 
@@ -98,7 +95,14 @@ function moveTo(x, y) {
   pos = [x, canv.height - y]
 }
 
+function extend (a, b) {
+  if (arguments.length > 2) for(var i = 0; ++i < arguments.length;) extend(a, arguments[i])
+  else for (var k in b) a[k] = b[k]
+  return a
+}
+
 function closePath() {
+  console.log(this)
   render()
 }
 
@@ -169,23 +173,29 @@ function dry(buffer, rgb){
   }
 }
 
-function initContext() {
-  canv = document.querySelector("canvas")
-  ctx = canv.getContext('webgl', { antialias: false })
-  pos = [0, canv.height]
+function initContext(canvas) {
+  canv = canvas
+  ctx = canvas.getContext('webgl', { antialias: false })
+  pos = [0, canvas.height]
 
-  ctx.clearColor(0.0, 0.0, 0.0, 1.0)
-  ctx.viewportWidth = canv.width
-  ctx.viewportHeight = canv.height
+  ctx.viewportWidth = canvas.width
+  ctx.viewportHeight = canvas.height
 }
 
-function init() {
-  initContext()
-  initShaders()
+function init(canvas) {
+  initContext(canvas)
+  initShaders(ctx)
   return pathgl
 }
 
-function twoEach(list, fn) {
+function twoEach(list, fn, ctx) {
   var l = list.length - 1, i = 0
-  while(i < l) fn(list[i++], list[i++])
+  while(i < l) fn.call(ctx, list[i++], list[i++])
+}
+
+function once (fn) {
+  var val, called, args = [].slice.call(arguments, 1)
+  return function () {
+    return called ? val : val = fn.apply(null, [].concat.apply(args, arguments))
+  }
 }
