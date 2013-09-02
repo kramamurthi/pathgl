@@ -1,32 +1,19 @@
-var get = document.querySelector.bind(document)
-  , canvas = get('canvas')
-  , svg = get('svg')
+var canvas = d3.select('canvas')
+  , svg = d3.select('svg')
+  , dim = { height: 500, width: innerWidth * .499 }
 
-  , width = canvas.height = svg.style.height = 500
-  , height = canvas.width = svg.style.width = innerWidth * .499
+canvas.attr(dim)
+svg.style(dim)
 
-function appendPath(d) {
-  var path = document.createElement('path')
-  svg.appendChild(path)
-  path.d = d
-}
-
-var tests = [ 'm 0 0 l 10 10 60 60 70 400 z'
-            , 'm 50 60 l 60 50 50 60 40 50 50 40 60 50 z'
-            ].map(function (d) { return d.toUpperCase() })
-
-function draw(d) {
-  d3.select('svg').append('path')
-  .attr('d', d)
-  .attr('stroke', '#333')
-  .attr('fill', 'none')
-}
+var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
+           , 'm 50 60 l 60 50 50 60 40 50 50 40 60 50 z'
+           ].map(function (d) { return d.toUpperCase() })
 
 var path = pathgl.init()
 
-tests.forEach(draw)
-tests.forEach(function (d, i) {
-  path
-  .stroke([.5, Math.random(), Math.random()])
-  .draw(d)
-})
+svg.selectAll('path').data(data).enter().append('path')
+.attr('d', function (d) { return d })
+.attr('stroke', '#333')
+.attr('fill', 'none')
+
+canvas.datum(data).call(pathgl)
