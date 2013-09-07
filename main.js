@@ -102,7 +102,7 @@ function extend (a, b) {
 }
 
 function closePath() {
-  console.log(this)
+  lineTo.apply(0, this.coords[0].split(' '))
   render()
 }
 
