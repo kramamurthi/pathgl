@@ -23,14 +23,13 @@ function pathgl (canvas) {
   pathgl.init(canvas.node ? canvas.node() : canvas)
   canvas.datum().map(function (d, i) {
     if ('string' === typeof d) d = canvas.datum()[i] = { d: d }
-    d.rgb = [1, 1, 1].map(Math.random)
+    d.fill = d3.functor([1, 1, 1])
     return d
   }).forEach(draw)
 }
 
 var pmatrix = [0.0031446540880503146, 0, 0, 0, 0, 0.004, 0, 0, 0, 0, -1, 0, -1, -1, 0, 1]
   , log = console.log.bind(console)
-  , stroke = [1, 1, 1]
   , paths = []
 
   , canv, ctx, program, pos
@@ -68,8 +67,8 @@ pathgl.vertex = [ "attribute vec3 aVertexPosition;"
 pathgl.init = once(init)
 
 pathgl.stroke = function (_) {
-  if (! _) return stroke
-  stroke = _
+  if (! _) return paths.stroke
+  paths.stroke = _
   return this
 }
 
@@ -155,7 +154,7 @@ function render() {
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
   for(var j = 0; j < paths.length; j++)
     for (var i = 0; i < paths[j].length; i++)
-      d3.queue(dry(paths[j][i], paths[j].rgb))
+      d3.queue(dry(paths[j][i], paths.stroke(j, j)))
 }
 
 function setStroke (rgb){
