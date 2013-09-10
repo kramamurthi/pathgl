@@ -20,9 +20,10 @@ d3.queue = function (fn) {
 }
 
 function pathgl (canvas) {
-  pathgl.init(canvas.node ? canvas.node() : canvas)
-  canvas.datum().map(function (d, i) {
-    if ('string' === typeof d) d = canvas.datum()[i] = { d: d }
+  var datum = canvas.datum ? canvas.datum() : canvas.node().__data__
+  pathgl.init(canvas.node())
+  datum.map(function (d, i) {
+    if ('string' === typeof d) d = datum[i] = { d: d }
     d.fill = d3.functor([1, 1, 1])
     return d
   }).forEach(draw)

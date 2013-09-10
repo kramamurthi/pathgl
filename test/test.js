@@ -12,11 +12,14 @@ var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
            + '350L519.6152422706631 340L519.6152422706631 320Z'
            ].map(function (d) { return d.toUpperCase() })
 
+var strokes = data.map(function () { return [1, 1, 1].map(Math.random) })
+
 svg.selectAll('path').data(data).enter().append('path')
+
 .attr('d', function (d) { return d })
 .attr('stroke', '#333')
 .attr('fill', 'none')
 
-var fills = data.map(function () { return [1, 1, 1].map(Math.random) })
-
-canvas.datum(data).call(pathgl.stroke(function (d, i) { return fills[i] }))
+var gl = pathgl.stroke(stroke)
+canvas.datum(data).transition().call(gl)
+function stroke(d, i) { return strokes[i] }
