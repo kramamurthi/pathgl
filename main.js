@@ -20,16 +20,19 @@ d3.queue = function (fn) {
 }
 
 function pathgl (canvas) {
-  var datum = canvas.datum ? canvas.datum() : canvas.node().__data__
   pathgl.init(canvas.node())
-  datum.map(function (d, i) {
-    if ('string' === typeof d) d = datum[i] = { d: d }
-    d.fill = d3.functor([1, 1, 1])
-    return d
-  }).forEach(draw)
+  canvas.tween ?
+    canvas.tween('fuak', function (d) { return amg.bind(null, d)}) : amg(canvas.datum())
+  function amg (d, t) { d.map(wrap).forEach(process, t) }
 }
 
-var pmatrix = [0.0031446540880503146, 0, 0, 0, 0, 0.004, 0, 0, 0, 0, -1, 0, -1, -1, 0, 1]
+function wrap(d, i) {
+  if ('string' === typeof d) d = d[i] = { d: d }
+  d.fill = d.fill || d3.functor([1, 1, 1])
+  return d
+}
+
+var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
   , log = console.log.bind(console)
   , paths = []
 
@@ -73,22 +76,29 @@ pathgl.stroke = function (_) {
   return this
 }
 
-function draw (datum) {
+function process (datum) {
   var str = datum.d
     , split = str.split(/([A-Za-z])/)
               .map(function(d) { return d.trim().toLowerCase() })
               .filter(function(d) { return d })
     , i = 0, action, coords
 
-  paths.push(lineBuffers = [])
-  var path = extend(paths[paths.length - 1], datum, { coords: [] })
+  var path = addToBuffer(datum)
+  if (! path.coords.length)
+    while (i < split.length) {
+      action = actions[split[i++]]
+      path.coords.push(coords = split[i++] || '')
+      if (! action.call) throw new Error(action + ' ' + split[i - 1] + ' is not yet implemented')
+      coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
+    }
+  else render(i, + this.toString())
+}
 
-  while (i < split.length) {
-    action = actions[split[i++]]
-    path.coords.push(coords = split[i++] || '')
-    if (! action.call) throw new Error(action + ' ' + split[i - 1] + ' is not yet implemented')
-    coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
-  }
+function addToBuffer(datum) {
+  var k = paths.filter(function (d) { return d.d == datum.d })
+  if (k.length) return k[0]
+  paths.push(lineBuffers = [])
+  return extend(paths[paths.length - 1], datum, { coords: [] })
 }
 
 function moveTo(x, y) {
@@ -103,7 +113,7 @@ function extend (a, b) {
 
 function closePath() {
   lineTo.apply(0, this.coords[0].split(' '))
-  render()
+  render(paths.indexOf(this))
 }
 
 function lineTo(x, y) {
@@ -150,12 +160,12 @@ function addLine(x1, y1, x2, y2) {
   lineBuffers[index].numItems = vertices.length / 3
 }
 
-function render() {
+function render(index) {
   //ctx.clear(ctx.COLOR_BUFFER_BIT)
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
-  for(var j = 0; j < paths.length; j++)
+  for (var j = 0; j < paths.length; j++)
     for (var i = 0; i < paths[j].length; i++)
-      d3.queue(dry(paths[j][i], paths.stroke(j, j)))
+      d3.queue(dry(paths[j][i], paths.stroke(paths[j], j) ))
 }
 
 function setStroke (rgb){
@@ -199,3 +209,21 @@ function once (fn) {
     return called ? val : val = fn.apply(null, [].concat.apply(args, arguments))
   }
 }
+
+function projection(l, r, b, t, n, f) {
+  var rl = r - l,
+      tb = t - b,
+      fn = f - n
+
+  return [ 2 / rl, 0, 0, 0
+         , 0, 2 / tb, 0, 0
+         , 0, 0, -2 / fn, 0
+
+         , (l + r) / -rl
+         , (t + b) / -tb
+         , (f + n) / -fn
+         , 1
+         ]
+}
+
+this.pathgl = pathgl
