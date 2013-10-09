@@ -9,7 +9,7 @@ d3.queue = function (fn) {
 function pathgl (canvas) {
   pathgl.init(canvas.node())
   canvas.tween ? canvas.tween('fuak', function (d) { return amg.bind(null, d) }) : amg(canvas.datum())
-  function amg (d, t) { d.map(wrap).forEach(process, t) }
+  function amg (d, t) { d.map(wrap).forEach(parse, t) }
 }
 
 function wrap(d, i) {
@@ -19,7 +19,6 @@ function wrap(d, i) {
 }
 
 var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
-  , log = console.log.bind(console)
   , paths = []
 
   , canv, ctx, program, pos
@@ -69,7 +68,7 @@ function inter(path, i) {
   return path
 }
 
-function process (datum) {
+function parse (datum) {
   var str = datum.d
     , split = str.split(/([A-Za-z])/)
               .map(function(d) { return d.trim().toLowerCase() })
@@ -134,7 +133,7 @@ function initShaders() {
   g = ctx.getUniformLocation(program, 'g')
   b = ctx.getUniformLocation(program, 'b')
 
-  if (! ctx.getProgramParameter(program, ctx.LINK_STATUS)) return log("Shader is broken")
+  if (! ctx.getProgramParameter(program, ctx.LINK_STATUS)) return console.error("Shader is broken")
 
   ctx.useProgram(program)
 
@@ -155,7 +154,7 @@ function addLine(x1, y1, x2, y2) {
 }
 
 function render(t) {
-  //ctx.clear(ctx.COLOR_BUFFER_BIT)
+  ctx.clear(ctx.COLOR_BUFFER_BIT)
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
   for (var j = 0; j < paths.length; j++)
     for (var i = 0; i < paths[j].length; i++)
@@ -163,7 +162,6 @@ function render(t) {
                             paths[j][i],
                             paths[j].interpolateStroke(t || 1)
                            ))
-
 }
 
 function setStroke (rgb){
