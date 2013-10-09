@@ -96,7 +96,7 @@ function process (datum) {
   while (i < split.length) {
     action = actions[split[i++]]
     path.coords.push(coords = split[i++] || '')
-    if (! action.call) throw new Error(action + ' ' + split[i - 1] + ' is not yet implemented')
+    if (! action.call) console.warn(action + ' ' + split[i - 1] + ' is not yet implemented')
     coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
   }
 }
