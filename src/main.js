@@ -21,8 +21,7 @@ d3.queue = function (fn) {
 
 function pathgl (canvas) {
   pathgl.init(canvas.node())
-  canvas.tween ?
-    canvas.tween('fuak', function (d) { return amg.bind(null, d) }) : amg(canvas.datum())
+  canvas.tween ? canvas.tween('fuak', function (d) { return amg.bind(null, d) }) : amg(canvas.datum())
   function amg (d, t) { d.map(wrap).forEach(process, t) }
 }
 
