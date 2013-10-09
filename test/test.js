@@ -11,12 +11,9 @@ var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
            , 'M 536.9357503463519 310L554.2562584220407'
            + ' 320L554.2562584220407 340L536.9357503463519 '
            + '350L519.6152422706631 340L519.6152422706631 320Z'
-
            ].map(function (d) { return d.toUpperCase() })
 
-
 var strokes = ['red', 'blue', 'green']
-
 var svgPath = svg.style('background', '#333').selectAll('path').data(data).enter().append('path')
 
 svgPath.attr('d', function (d) { return d })

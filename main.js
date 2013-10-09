@@ -225,9 +225,9 @@ function once (fn) {
 }
 
 function projection(l, r, b, t, n, f) {
-  var rl = r - l,
-      tb = t - b,
-      fn = f - n
+  var rl = r - l
+    , tb = t - b
+    , fn = f - n
 
   return [ 2 / rl, 0, 0, 0
          , 0, 2 / tb, 0, 0
