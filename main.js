@@ -22,7 +22,7 @@ d3.queue = function (fn) {
 function pathgl (canvas) {
   pathgl.init(canvas.node())
   canvas.tween ?
-    canvas.tween('fuak', function (d) { return amg.bind(null, d)}) : amg(canvas.datum())
+    canvas.tween('fuak', function (d) { return amg.bind(null, d) }) : amg(canvas.datum())
   function amg (d, t) { d.map(wrap).forEach(process, t) }
 }
 
@@ -73,7 +73,14 @@ pathgl.init = once(init)
 pathgl.stroke = function (_) {
   if (! _) return paths.stroke
   paths.stroke = _
+  paths.forEach(inter)
   return this
+}
+
+function inter(path, i) {
+  path.interpolateStroke = d3.interpolateRgb(path.stroke || '#000',
+                                             path.stroke = paths.stroke(path, i))
+  return path
 }
 
 function process (datum) {
@@ -84,21 +91,22 @@ function process (datum) {
     , i = 0, action, coords
 
   var path = addToBuffer(datum)
-  if (! path.coords.length)
-    while (i < split.length) {
-      action = actions[split[i++]]
-      path.coords.push(coords = split[i++] || '')
-      if (! action.call) throw new Error(action + ' ' + split[i - 1] + ' is not yet implemented')
-      coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
-    }
-  else render(i, + this.toString())
+
+  if (path.coords.length) return render(+ this)
+
+  while (i < split.length) {
+    action = actions[split[i++]]
+    path.coords.push(coords = split[i++] || '')
+    if (! action.call) throw new Error(action + ' ' + split[i - 1] + ' is not yet implemented')
+    coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
+  }
 }
 
 function addToBuffer(datum) {
   var k = paths.filter(function (d) { return d.d == datum.d })
   if (k.length) return k[0]
   paths.push(lineBuffers = [])
-  return extend(paths[paths.length - 1], datum, { coords: [] })
+  return inter(extend(paths[paths.length - 1], datum, { coords: [] }), paths.length - 1)
 }
 
 function moveTo(x, y) {
@@ -106,14 +114,14 @@ function moveTo(x, y) {
 }
 
 function extend (a, b) {
-  if (arguments.length > 2) for(var i = 0; ++i < arguments.length;) extend(a, arguments[i])
+  if (arguments.length > 2) [].forEach.call(arguments, function (b) { extend(a, b) })
   else for (var k in b) a[k] = b[k]
   return a
 }
 
 function closePath() {
   lineTo.apply(0, this.coords[0].split(' '))
-  render(paths.indexOf(this))
+  render()
 }
 
 function lineTo(x, y) {
@@ -160,27 +168,30 @@ function addLine(x1, y1, x2, y2) {
   lineBuffers[index].numItems = vertices.length / 3
 }
 
-function render(index) {
+function render(t) {
   //ctx.clear(ctx.COLOR_BUFFER_BIT)
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
   for (var j = 0; j < paths.length; j++)
     for (var i = 0; i < paths[j].length; i++)
-      d3.queue(dry(paths[j][i], paths.stroke(paths[j], j) ))
+      d3.queue(enclose.bind(null,
+                            paths[j][i],
+                            paths[j].interpolateStroke(t || 1)
+                           ))
+
 }
 
 function setStroke (rgb){
-  ctx.uniform1f(r, rgb[0])
-  ctx.uniform1f(g, rgb[1])
-  ctx.uniform1f(b, rgb[2])
+  window.x = rgb
+  ctx.uniform1f(r, rgb.r / 256)
+  ctx.uniform1f(g, rgb.g / 256)
+  ctx.uniform1f(b, rgb.b / 256)
 }
 
-function dry(buffer, rgb){
-  return function () {
-    setStroke(rgb)
+function enclose(buffer, rgb){
+    setStroke(d3.rgb(rgb))
     ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
     ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
     ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
-  }
 }
 
 function initContext(canvas) {
@@ -190,6 +201,7 @@ function initContext(canvas) {
 
   ctx.viewportWidth = canvas.width
   ctx.viewportHeight = canvas.height
+  ctx.lineWidth(5)
 }
 
 function init(canvas) {
@@ -204,9 +216,11 @@ function twoEach(list, fn, ctx) {
 }
 
 function once (fn) {
-  var val, called, args = [].slice.call(arguments, 1)
+  var called, args = [].slice.call(arguments, 1)
   return function () {
-    return called ? val : val = fn.apply(null, [].concat.apply(args, arguments))
+    if (called) return
+    called = true
+    fn.apply(null, [].concat.apply(args, arguments))
   }
 }
 
