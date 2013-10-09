@@ -1,16 +1,3 @@
-//stroke
-// thickness
-// dasharray
-// length
-// opacity
-// color
-
-//fill
-// pattern
-// gradient + shaders
-// color
-// opacity
-
 d3.queue = function (fn) {
   var args = [].slice.call(arguments, 1)
   d3.timer(function () {
@@ -96,7 +83,7 @@ function process (datum) {
   while (i < split.length) {
     action = actions[split[i++]]
     path.coords.push(coords = split[i++] || '')
-    if (! action.call) console.warn(action + ' ' + split[i - 1] + ' is not yet implemented')
+    if (! action) console.warn(action + ' ' + split[i - 1] + ' is not yet implemented')
     coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
   }
 }
