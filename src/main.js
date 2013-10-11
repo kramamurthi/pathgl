@@ -8,7 +8,7 @@ d3.queue = function (fn) {
 
 function pathgl (canvas) {
   pathgl.init(canvas.node())
-  canvas.tween ? canvas.tween('fuak', function (d) { return amg.bind(null, d) }) : amg(canvas.datum())
+  canvas.tween ? canvas.tween('fuak', amg) : amg(canvas.datum())
   function amg (d, t) { d.map(wrap).forEach(parse, t) }
 }
 
@@ -26,7 +26,7 @@ var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
   , lineBuffers
   , red, green, blue
 
-var actions = { m: moveTo
+var methods = { m: moveTo
               , z: closePath
               , l: lineTo
 
@@ -70,26 +70,29 @@ function inter(path, i) {
 
 function parse (datum) {
   var str = datum.d
-    , split = str.split(/([A-Za-z])/)
-              .map(function(d) { return d.trim().toLowerCase() })
-              .filter(function(d) { return d })
-    , i = 0, action, coords
-
-  var path = addToBuffer(datum)
+    , path = addToBuffer(datum)
 
   if (path.coords.length) return render(+ this)
 
-  while (i < split.length) {
-    action = actions[split[i++]]
-    path.coords.push(coords = split[i++] || '')
-    if (! action) console.warn(action + ' ' + split[i - 1] + ' is not yet implemented')
-    coords ? twoEach(coords.split(' '), action, path) : action.call(path, coords)
-  }
+  str.match(/[a-z][^a-z]*/ig).forEach(function (segment) {
+    var instruction = methods[segment[0].toLowerCase()]
+      , coords = segment.slice(1).trim().split(/,| /g)
+
+    ;[].push.apply(path.coords, coords)
+
+    instruction ?
+      twoEach(coords, instruction, path) :
+      console.error(segment[0] + ' ' + segment[0] + ' is not yet implemented')
+  })
+
+
 }
 
 function addToBuffer(datum) {
   var k = paths.filter(function (d) { return d.d == datum.d })
+
   if (k.length) return k[0]
+
   paths.push(lineBuffers = [])
   return inter(extend(paths[paths.length - 1], datum, { coords: [] }), paths.length - 1)
 }
@@ -105,7 +108,7 @@ function extend (a, b) {
 }
 
 function closePath() {
-  lineTo.apply(0, this.coords[0].split(' '))
+  lineTo.apply(0, this.coords.slice(0, 2))
   render()
 }
 
@@ -118,6 +121,7 @@ function compileShader (type, src) {
   ctx.shaderSource(shader, src)
   ctx.compileShader(shader)
   if (! ctx.getShaderParameter(shader, ctx.COMPILE_STATUS)) throw new Error(ctx.getShaderInfoLog(shader))
+
   return shader
 }
 
@@ -172,10 +176,10 @@ function setStroke (rgb){
 }
 
 function enclose(buffer, rgb){
-    setStroke(d3.rgb(rgb))
-    ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
-    ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
-    ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
+  setStroke(d3.rgb(rgb))
+  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
+  ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
+  ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
 }
 
 function initContext(canvas) {
@@ -195,6 +199,8 @@ function init(canvas) {
 }
 
 function twoEach(list, fn, ctx) {
+  if (list.length == 1) fn.call(ctx)
+
   var l = list.length - 1, i = 0
   while(i < l) fn.call(ctx, list[i++], list[i++])
 }
