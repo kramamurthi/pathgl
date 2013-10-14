@@ -231,3 +231,39 @@ function projection(l, r, b, t, n, f) {
 }
 
 this.pathgl = pathgl
+
+function noop () {}
+
+function aa(svg, canvas) {
+  return d3.select(pathgl.initContext(canvas) ? svg : canvas)
+}
+
+var svgDomProxy =
+    { fill: function (val) {
+        console.log(val)
+      }
+
+    , getAttribute: function (name) {
+        return this.attr[name]
+      }
+
+    , setAttribute: function (name, value) {
+        this.attr[name] = value
+        this[name](value)
+      }
+
+    , removeAttribute: function (name) {
+        this.attr[name] = null
+      }
+
+    , textContent: noop
+    , removeEventListener: noop
+    , addEventListener: noop
+}
+
+function dom (datum) {
+  return extend(Object.create(svgDomProxy), {
+    attr: {},
+    __data__: datum
+  })
+}
