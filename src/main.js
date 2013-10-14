@@ -6,10 +6,16 @@ d3.queue = function (fn) {
   })
 }
 
-function pathgl (canvas) {
+function pathgl (svg, canvas) {
   pathgl.init(canvas.node())
   canvas.tween ? canvas.tween('fuak', amg) : amg(canvas.datum())
   function amg (d, t) { d.map(wrap).forEach(parse, t) }
+}
+
+function pathgl(svg, canvas) {
+  svg = d3.select(svg).node()
+  canvas = d3.select(canvas).node()
+  return d3.select(pathgl.init(canvas) ? canvas : svg)
 }
 
 function wrap(d, i) {
@@ -184,7 +190,7 @@ function enclose(buffer, rgb){
 
 function initContext(canvas) {
   canv = canvas
-  ctx = canvas.getContext('webgl', { antialias: false })
+  if (! (ctx = canvas.getContext('webgl', { antialias: false }))) return
   pos = [0, canvas.height]
 
   ctx.viewportWidth = canvas.width
@@ -195,7 +201,7 @@ function initContext(canvas) {
 function init(canvas) {
   initContext(canvas)
   initShaders(ctx)
-  return pathgl
+  return ctx
 }
 
 function twoEach(list, fn, ctx) {
@@ -234,9 +240,6 @@ this.pathgl = pathgl
 
 function noop () {}
 
-function aa(svg, canvas) {
-  return d3.select(pathgl.initContext(canvas) ? svg : canvas)
-}
 
 var svgDomProxy =
     { fill: function (val) {
@@ -267,3 +270,23 @@ function dom (datum) {
     __data__: datum
   })
 }
+
+var container = d3.selectAll(pathgl('svg', 'canvas'))
+
+function update (data) {
+  var join = container.data(data).selectAll('path')
+
+  var update = join.attr('d', function (d) { return path(d) })
+               .attr('transform', 'translate(' + [1, 2].map(Math.random) + ')')
+
+  var enter = join.enter().append('path')
+              .attr('fill', 'red')
+              .transition()
+              .attr('fill', 'pink')
+
+  var exit = join.exit()
+             .transition()
+             .attr('fill', 'pink')
+             .remove()
+}
+update([1, 2, 3])
