@@ -6,22 +6,16 @@ d3.queue = function (fn) {
   })
 }
 
-function pathgl (svg, canvas) {
-  pathgl.init(canvas.node())
-  canvas.tween ? canvas.tween('fuak', amg) : amg(canvas.datum())
-  function amg (d, t) { d.map(wrap).forEach(parse, t) }
-}
-
-function pathgl(svg, canvas) {
+function pathgl(canvas, svg) {
   pathgl.init(d3.select(canvas).node())
   return ctx ? canvas : svg
 }
 
-function wrap(d, i) {
-  if ('string' === typeof d) d = d[i] = { d: d }
-  d.fill = d.fill || d3.functor([1, 1, 1])
-  return d
-}
+pathgl.supportedAttributes =
+  [ 'd'
+  , 'stroke'
+  , 'strokeWidth'
+  ]
 
 var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
   , paths = []
@@ -63,19 +57,11 @@ pathgl.init = once(init)
 pathgl.stroke = function (_) {
   if (! _) return paths.stroke
   paths.stroke = _
-  paths.forEach(inter)
   return this
 }
 
-function inter(path, i) {
-  path.interpolateStroke = d3.interpolateRgb(path.stroke || '#000',
-                                             path.stroke = paths.stroke(path, i))
-  return path
-}
-
-function parse (datum) {
-  var str = datum.d
-    , path = addToBuffer(datum)
+function parse (str) {
+  var path = addToBuffer(this)
 
   if (path.coords.length) return render(+ this)
 
@@ -99,7 +85,7 @@ function addToBuffer(datum) {
   if (k.length) return k[0]
 
   paths.push(lineBuffers = [])
-  return inter(extend(paths[paths.length - 1], datum, { coords: [] }), paths.length - 1)
+  return extend(paths[paths.length - 1], datum, { coords: [] })
 }
 
 function moveTo(x, y) {
@@ -169,12 +155,11 @@ function render(t) {
     for (var i = 0; i < paths[j].length; i++)
       d3.queue(enclose.bind(null,
                             paths[j][i],
-                            paths[j].interpolateStroke(t || 1)
+                            d3.rgb('white')
                            ))
 }
 
 function setStroke (rgb){
-  window.x = rgb
   ctx.uniform1f(r, rgb.r / 256)
   ctx.uniform1f(g, rgb.g / 256)
   ctx.uniform1f(b, rgb.b / 256)
@@ -189,7 +174,7 @@ function enclose(buffer, rgb){
 
 function initContext(canvas) {
   canv = canvas
-  pos = [0, canvas.height]
+  pos = [0, canv.height]
 
   ctx = canvas.getContext('webgl', { antialias: false })
   if (! ctx) return
@@ -199,14 +184,7 @@ function initContext(canvas) {
 }
 
 function monkeyPatch(canvas) {
-  canvas.appendChild = function () {
-    return dom()
-  }
-  canvas.ownerDocument = {
-    createElementNS: function () {
-      console.log('lol')
-    }
-  }
+  canvas.appendChild = dom
 }
 
 function init(canvas) {
@@ -254,7 +232,14 @@ function noop () {}
 
 var svgDomProxy =
     { fill: function (val) {
-        console.log(val)
+
+      }
+
+    , d: function (d) {
+        parse.call(this, d)
+      }
+
+    , stroke: function (d) {
       }
 
     , getAttribute: function (name) {

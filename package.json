@@ -1,0 +1,29 @@
+{
+  "name": "pathgl",
+  "version": "0.1.0",
+  "description": "..",
+  "keywords": [
+    "visualization",
+    "svg",
+    "animation",
+    "webgl",
+    "rendering",
+    "motiongraphics"
+  ],
+  "author": {
+    "name": "adnan wahab",
+    "url": "http://adnanwahab.com"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/adnan-wahab/pathgl"
+  },
+  "bugs": {
+    "url": "https://github.com/adnan-wahab/pathgl/issues"
+  },
+  "dependencies" : {},
+  
+  "devDependencies": {
+    "node-minify": "0.8.1"
+  }
+}
