@@ -1,110 +1,8 @@
-;d3.queue = function (fn) {
-  var args = [].slice.call(arguments, 1)
-  d3.timer(function () {
-    fn.apply(null, args)
-    return true
-  })
-}
-
-function pathgl(canvas, svg) {
-  pathgl.init(d3.select(canvas).node())
-  return ctx ? canvas : svg
-}
-
-pathgl.supportedAttributes =
-  [ 'd'
-  , 'stroke'
-  , 'strokeWidth'
-  ]
-
-var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
-  , paths = []
-
-  , canv, ctx, program, pos
-  , r, g, b
-  , lineBuffers
-  , red, green, blue
-
-var methods = { m: moveTo
-              , z: closePath
-              , l: lineTo
-
-              , h: 'horizontalLine'
-              , v: 'verticalLine'
-              , c: 'curveTo'
-              , s: 'shortCurveTo'
-              , q: 'quadraticBezier'
-              , t: 'smoothQuadraticBezier'
-              , a: 'elipticalArc'
-              }
-
-pathgl.fragment = [ "precision mediump float;"
-                  , "uniform float r, g, b;"
-                  , "void main(void) {"
-                  , "  gl_FragColor = vec4(r, g, b, 1.0);"
-                  , "}"
-                  ].join('\n')
-
-pathgl.vertex = [ "attribute vec3 aVertexPosition;"
-                , "uniform mat4 uPMatrix;"
-                , "void main(void) {"
-                , "  gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
-                , "}"
-                ].join('\n')
-
-pathgl.init = once(init)
-
-pathgl.stroke = function (_) {
-  if (! _) return paths.stroke
-  paths.stroke = _
-  return this
-}
-
-function parse (str) {
-  var path = addToBuffer(this)
-
-  if (path.coords.length) return render(+ this)
-
-  str.match(/[a-z][^a-z]*/ig).forEach(function (segment) {
-    var instruction = methods[segment[0].toLowerCase()]
-      , coords = segment.slice(1).trim().split(/,| /g)
-
-    ;[].push.apply(path.coords, coords)
-
-    instruction ?
-      twoEach(coords, instruction, path) :
-      console.error(segment[0] + ' ' + segment[0] + ' is not yet implemented')
-  })
-
-
-}
-
-function addToBuffer(datum) {
-  var k = paths.filter(function (d) { return d.d == datum.d })
-
-  if (k.length) return k[0]
-
-  paths.push(lineBuffers = [])
-  return extend(paths[paths.length - 1], datum, { coords: [] })
-}
-
-function moveTo(x, y) {
-  pos = [x, canv.height - y]
-}
-
-function extend (a, b) {
-  if (arguments.length > 2) [].forEach.call(arguments, function (b) { extend(a, b) })
-  else for (var k in b) a[k] = b[k]
-  return a
-}
-
-function closePath() {
-  lineTo.apply(0, this.coords.slice(0, 2))
-  render()
-}
-
-function lineTo(x, y) {
-  addLine.apply(0, pos.concat(pos = [x, canv.height - y]))
+;function init(canvas) {
+  initContext(canvas)
+  initShaders(ctx)
+  canvas.appendChild = dom
+  return ctx
 }
 
 function compileShader (type, src) {
@@ -136,6 +34,109 @@ function initShaders() {
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
+}
+
+function initContext(canvas) {
+  canv = canvas
+  pos = [0, canv.height]
+
+  ctx = canvas.getContext('webgl', { antialias: false })
+  if (! ctx) return
+  ctx.viewportWidth = canvas.width
+  ctx.viewportHeight = canvas.height
+  ctx.lineWidth(5)
+}
+function pathgl(canvas, svg) {
+  init(d3.select(canvas).node())
+  return ctx ? canvas : svg
+}
+
+this.pathgl = pathgl
+var methods = { m: moveTo
+              , z: closePath
+              , l: lineTo
+
+              , h: 'horizontalLine'
+              , v: 'verticalLine'
+              , c: 'curveTo'
+              , s: 'shortCurveTo'
+              , q: 'quadraticBezier'
+              , t: 'smoothQuadraticBezier'
+              , a: 'elipticalArc'
+              }
+
+function parse (str) {
+  var path = addToBuffer(this)
+
+  if (path.coords.length) return render(+ this)
+
+  str.match(/[a-z][^a-z]*/ig).forEach(function (segment) {
+    var instruction = methods[segment[0].toLowerCase()]
+      , coords = segment.slice(1).trim().split(/,| /g)
+
+    ;[].push.apply(path.coords, coords)
+
+    instruction ?
+      twoEach(coords, instruction, path) :
+      console.error(segment[0] + ' ' + segment[0] + ' is not yet implemented')
+  })
+}
+
+function moveTo(x, y) {
+  pos = [x, canv.height - y]
+}
+
+function closePath() {
+  lineTo.apply(0, this.coords.slice(0, 2))
+  render()
+}
+
+function lineTo(x, y) {
+  addLine.apply(0, pos.concat(pos = [x, canv.height - y]))
+}
+var svgDomProxy =
+    { fill: function (val) {
+
+      }
+
+    , d: function (d) {
+        parse.call(this, d)
+      }
+
+    , stroke: function (d) {
+      }
+
+    , getAttribute: function (name) {
+        return this.attr[name]
+      }
+
+    , setAttribute: function (name, value) {
+        this.attr[name] = value
+        this[name](value)
+      }
+
+    , removeAttribute: function (name) {
+        this.attr[name] = null
+      }
+
+    , textContent: noop
+    , removeEventListener: noop
+    , addEventListener: noop
+}
+
+function dom(el) {
+  console.log(name)
+  return extend(Object.create(svgDomProxy), {
+    attr: {},
+    tagName: el.tagName
+  })
+}function addToBuffer(datum) {
+  var k = paths.filter(function (d) { return d.d == datum.d })
+
+  if (k.length) return k[0]
+
+  paths.push(lineBuffers = [])
+  return extend(paths[paths.length - 1], datum, { coords: [] })
 }
 
 function addLine(x1, y1, x2, y2) {
@@ -172,26 +173,37 @@ function enclose(buffer, rgb){
   ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
 }
 
-function initContext(canvas) {
-  canv = canvas
-  pos = [0, canv.height]
+;pathgl.supportedAttributes =
+  [ 'd'
+  , 'stroke'
+  , 'strokeWidth'
+  ]
 
-  ctx = canvas.getContext('webgl', { antialias: false })
-  if (! ctx) return
-  ctx.viewportWidth = canvas.width
-  ctx.viewportHeight = canvas.height
-  ctx.lineWidth(5)
-}
+var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
+  , paths = []
 
-function monkeyPatch(canvas) {
-  canvas.appendChild = dom
-}
+  , canv, ctx, program, pos
+  , r, g, b
+  , lineBuffers
+  , red, green, blue
 
-function init(canvas) {
-  initContext(canvas)
-  initShaders(ctx)
-  monkeyPatch(canvas)
-  return ctx
+pathgl.fragment = [ "precision mediump float;"
+                  , "uniform float r, g, b;"
+                  , "void main(void) {"
+                  , "  gl_FragColor = vec4(r, g, b, 1.0);"
+                  , "}"
+                  ].join('\n')
+
+pathgl.vertex = [ "attribute vec3 aVertexPosition;"
+                , "uniform mat4 uPMatrix;"
+                , "void main(void) {"
+                , "  gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
+                , "}"
+                ].join('\n')
+;function extend (a, b) {
+  if (arguments.length > 2) [].forEach.call(arguments, function (b) { extend(a, b) })
+  else for (var k in b) a[k] = b[k]
+  return a
 }
 
 function twoEach(list, fn, ctx) {
@@ -201,14 +213,7 @@ function twoEach(list, fn, ctx) {
   while(i < l) fn.call(ctx, list[i++], list[i++])
 }
 
-function once (fn) {
-  var called, args = [].slice.call(arguments, 1)
-  return function () {
-    if (called) return
-    called = true
-    fn.apply(null, [].concat.apply(args, arguments))
-  }
-}
+function noop () {}
 
 function projection(l, r, b, t, n, f) {
   var rl = r - l
@@ -226,43 +231,10 @@ function projection(l, r, b, t, n, f) {
          ]
 }
 
-this.pathgl = pathgl
-
-function noop () {}
-
-var svgDomProxy =
-    { fill: function (val) {
-
-      }
-
-    , d: function (d) {
-        parse.call(this, d)
-      }
-
-    , stroke: function (d) {
-      }
-
-    , getAttribute: function (name) {
-        return this.attr[name]
-      }
-
-    , setAttribute: function (name, value) {
-        this.attr[name] = value
-        this[name](value)
-      }
-
-    , removeAttribute: function (name) {
-        this.attr[name] = null
-      }
-
-    , textContent: noop
-    , removeEventListener: noop
-    , addEventListener: noop
-}
-
-function dom (datum) {
-  return extend(Object.create(svgDomProxy), {
-    attr: {},
-    __data__: datum
+d3.queue = function (fn) {
+  var args = [].slice.call(arguments, 1)
+  d3.timer(function () {
+    fn.apply(null, args)
+    return true
   })
-};;
+}
