@@ -2,6 +2,7 @@ var compressor = require('uglify-js')
   , fs = require('fs')
   , source = './src/'
   , orig = fs.readdirSync(source)
+           .sort()
            .map(concat)
            .join('')
 
