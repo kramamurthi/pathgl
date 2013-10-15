@@ -4,11 +4,13 @@ var canvas = d3.select('canvas')
 
 canvas.attr(dim)
 svg.style(dim)
+var x = 1
+var line = d3.svg.line()
+           .x(function(d){ return d * 2})
+           .y(function(d){ return d * window.x })
 
-Function.prototype.toUpperCase = noop
-
-var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
-           , 'm 50 60 l 60 50 50 60 40 50 50 40 60 50 z'
+var data = [ 'M 0 0 L 10 10 60 60 70 400 Z'
+           , 'M 50 60 L 60 50 50 60 40 50 50 40 60 50 Z'
 
            , 'M 536.9357503463519 310L554.2562584220407'
            + ' 320L554.2562584220407 340L536.9357503463519'
@@ -16,10 +18,13 @@ var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
 
            , texas()
            , signature()
-           , heart()
+           , {toString: heart}
+           , {toString: function () { return line(d3.range(innerWidth / 2)) + 'Z' }}
            ]
-           .map(function (d) { return d.toUpperCase() })
 
+setInterval(function () {
+  x = Math.random()
+}, 2000)
 var strokes = rando()
 function test (b) {
   var join = d3.select(b ? 'svg' : pathgl('canvas'))
@@ -29,22 +34,21 @@ function test (b) {
   join.enter().append('path')
   .attr('d', function (d) { return d.toString() })
   .attr('stroke', stroke)
-  .attr('stroke-width', 5)
+  .attr('stroke-width', 1)
   .attr('fill', 'none')
-  .transition().duration(1000).call(function () { strokes = rando() })
-  .attr('stroke', stroke).each(function () { console.log('hi') })
-  .each('end', function k() {
+  .transition().duration(1000)
+  .attr('stroke', stroke)
+  .each('end', function k(d, i) {
+    if (i == 0 , (this.parentElement || {}).tagName == 'svg') strokes = rando()
     join.transition().duration(1000).attr('stroke', stroke).each('end', k)
+    .attr('d', function (d) { return d.toString() })
+
   })
 
 }
 
 test(1)
 test(0)
-
-setInterval(function () {
-    strokes = rando()
-})
 
 function color(selection) {
   selection.transition().duration(1000).attr('stroke', stroke)
