@@ -88,3 +88,27 @@
 // .attr('d', function (d) {
 //   return poq(d)
 // })
+
+var container = d3.select(pathgl('svg', 'canvas'))
+
+function update (data) {
+  var join = container.selectAll('path').data(data)
+
+  var update = join.attr('d', function (d) { return ('fuck') })
+               .attr('transform', 'translate(' + [1, 2].map(Math.random) + ')')
+
+  var enter = join.enter()
+              .append('path')
+              .attr('fill', 'red')
+              .transition()
+              .attr('fill', 'pink')
+
+  var exit = join.exit()
+             .transition()
+             .attr('fill', 'pink')
+             .remove()
+
+  return join
+}
+
+var k =update([1,2,3])
