@@ -1,6 +1,6 @@
 var canvas = d3.select('canvas')
   , svg = d3.select('svg')
-  , dim = { height: 500, width: innerWidth * .499 }
+  , dim = { height: 500, width: innerWidth * .499, background: '#333' }
 
 canvas.attr(dim)
 svg.style(dim)
@@ -21,45 +21,30 @@ var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
            .map(function (d) { return d.toUpperCase() })
 
 var strokes = rando()
-var svgPath = svg.style('background', '#333').selectAll('path')
-              .data(data).enter().append('path')
+function test (b) {
+  var join = d3.select(b ? 'svg' : pathgl('canvas'))
+             .selectAll('path')
+             .data(data)
 
-svgPath.attr('d', function (d) { return d.toString() })
-.attr('stroke-width', 5)
-.attr('stroke', stroke)
-.attr('fill', 'none')
-.transition().duration(1000)
-.each('end', function k(el, i) {
-  if (i != svgPath.size() - 1) return
-  strokes = rando()
-  svgPath.transition().duration(1500).delay(500).attr('stroke', stroke)
-  .each('end', k)
-})
+  join.enter().append('path')
+  .attr('d', function (d) { return d.toString() })
+  .attr('stroke', stroke)
+  .attr('stroke-width', 5)
+  .attr('fill', 'none')
+  .transition().duration(1000).call(function () { strokes = rando() })
+  .attr('stroke', stroke).each(function () { console.log('hi') })
+  .each('end', function k() {
+    join.transition().duration(1000).attr('stroke', stroke).each('end', k)
+  })
 
-var join = d3.select(pathgl('canvas', 'svg'))
-         .selectAll('path')
-         .data(data)
-
-join.enter().append('path')
-.attr('d', function (d) { return d.toString() })
-.attr('stroke', stroke)
-.transition().duration(1000).call(function () { strokes = rando() })
-.attr('stroke', stroke)
-.each('end', function k() {
-  join.transition().duration(1000).attr('stroke', stroke).each('end', k)
-})
-
-
-function invoke (obj, method) {
-  return obj.method.apply(this, [].slice.call(arguments))
 }
 
-var invokeWith = function (method) {
-  var args = [].slice.call(arguments)
-  return function (obj) {
-    return invoke(method, [].concat.call(arguments, args).reverse())
-  }
-}
+test(1)
+test(0)
+
+setInterval(function () {
+    strokes = rando()
+})
 
 function color(selection) {
   selection.transition().duration(1000).attr('stroke', stroke)
@@ -71,8 +56,6 @@ function recur (selection, fn) {
   .call(fn)
   .each('end', recur, selection, fn)
 }
-
-join.exit().remove()
 
 function stroke(d, i) {
   return strokes[i]

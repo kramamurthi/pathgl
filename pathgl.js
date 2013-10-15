@@ -44,7 +44,6 @@ function initContext(canvas) {
   if (! ctx) return
   ctx.viewportWidth = canvas.width
   ctx.viewportHeight = canvas.height
-  ctx.lineWidth(5)
 }
 function pathgl(canvas, svg) {
   init(d3.select(canvas).node())
@@ -74,7 +73,7 @@ function parse (str) {
     var instruction = methods[segment[0].toLowerCase()]
       , coords = segment.slice(1).trim().split(/,| /g)
 
-    ;[].push.apply(path.coords, coords)
+    ;[].push.apply(path.coords, coords)//
 
     instruction ?
       twoEach(coords, instruction, path) :
@@ -105,6 +104,10 @@ var svgDomProxy =
 
     , stroke: function (d) {
         render()
+      }
+
+    , 'stroke-width': function (value) {
+        ctx.lineWidth(value)
       }
 
     , getAttribute: function (name) {
