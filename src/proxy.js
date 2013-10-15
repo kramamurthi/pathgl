@@ -11,6 +11,10 @@ var svgDomProxy =
         render()
       }
 
+    , 'stroke-width': function (value) {
+        ctx.lineWidth(value)
+      }
+
     , getAttribute: function (name) {
         return this.attr[name]
       }

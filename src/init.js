@@ -44,5 +44,4 @@ function initContext(canvas) {
   if (! ctx) return
   ctx.viewportWidth = canvas.width
   ctx.viewportHeight = canvas.height
-  ctx.lineWidth(5)
 }
