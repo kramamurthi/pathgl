@@ -17,7 +17,7 @@ var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
            , heart()
            ].map(function (d) { return d.toUpperCase() })
 
-var strokes = ['red', 'blue', 'green']
+var strokes = rando()
 var svgPath = svg.style('background', '#333').selectAll('path')
               .data(data).enter().append('path')
 
@@ -40,11 +40,8 @@ var join = d3.select(pathgl('canvas', 'svg'))
 join.enter().append('path')
 .attr('d', function (d) { return d })
 .attr('stroke', stroke)
-.transition().duration(1000)
-.call(function () { strokes = strokes.reverse() })
+.transition().duration(1000).call(function () { strokes = rando() })
 .attr('stroke', stroke)
-
-join.attr('stroke', stroke)
 
 join.exit().remove()
 

@@ -1,6 +1,5 @@
 function addToBuffer(datum) {
-  var k = paths.filter(function (d) { return d.d == datum.d })
-
+  var k = paths.filter(function (d) { return d.__data__d == datum.__data__ })
   if (k.length) return k[0]
 
   paths.push(lineBuffers = [])

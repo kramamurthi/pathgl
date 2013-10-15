@@ -8,6 +8,7 @@ var svgDomProxy =
       }
 
     , stroke: function (d) {
+        console.log(d)
       }
 
     , getAttribute: function (name) {
@@ -29,7 +30,6 @@ var svgDomProxy =
 }
 
 function dom(el) {
-  console.log(name)
   return extend(Object.create(svgDomProxy), {
     attr: {},
     tagName: el.tagName

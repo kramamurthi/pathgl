@@ -104,6 +104,7 @@ var svgDomProxy =
       }
 
     , stroke: function (d) {
+        console.log(d)
       }
 
     , getAttribute: function (name) {
@@ -125,14 +126,12 @@ var svgDomProxy =
 }
 
 function dom(el) {
-  console.log(name)
   return extend(Object.create(svgDomProxy), {
     attr: {},
     tagName: el.tagName
   })
 }function addToBuffer(datum) {
-  var k = paths.filter(function (d) { return d.d == datum.d })
-
+  var k = paths.filter(function (d) { return d.__data__d == datum.__data__ })
   if (k.length) return k[0]
 
   paths.push(lineBuffers = [])
