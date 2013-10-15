@@ -16,11 +16,13 @@ function build(_, file) {
 
   console.log('rebuilding ' + (file ? file : ''))
 
-  fs.writeFileSync('pathgl.js', orig)
+  try {
+    fs.writeFileSync('pathgl.js', orig)
+    fs.writeFileSync('pathgl.min.js',
+                     compressor.minify(orig, { fromString: true }).code
+                    )
+  } catch (e) { console.log(e) }
 
-  fs.writeFileSync('pathgl.min.js',
-                   compressor.minify(orig, { fromString: true }).code
-                  )
 }
 
 

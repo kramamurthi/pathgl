@@ -8,7 +8,7 @@ var svgDomProxy =
       }
 
     , stroke: function (d) {
-        console.log(d)
+        render()
       }
 
     , getAttribute: function (name) {

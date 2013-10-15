@@ -104,7 +104,7 @@ var svgDomProxy =
       }
 
     , stroke: function (d) {
-        console.log(d)
+        render()
       }
 
     , getAttribute: function (name) {
@@ -148,15 +148,16 @@ function addLine(x1, y1, x2, y2) {
   lineBuffers[index].numItems = vertices.length / 3
 }
 
+var count = 0
 function render(t) {
   ctx.clear(ctx.COLOR_BUFFER_BIT)
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
   for (var j = 0; j < paths.length; j++)
     for (var i = 0; i < paths[j].length; i++)
-      d3.queue(enclose.bind(null,
-                            paths[j][i],
-                            d3.rgb('white')
-                           ))
+      d3.queue(enclose,
+               paths[j][i],
+               paths[j].attr.stroke || '#000'
+              )
 }
 
 function setStroke (rgb){

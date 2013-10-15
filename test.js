@@ -5,6 +5,8 @@ var canvas = d3.select('canvas')
 canvas.attr(dim)
 svg.style(dim)
 
+Function.prototype.toUpperCase = noop
+
 var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
            , 'm 50 60 l 60 50 50 60 40 50 50 40 60 50 z'
 
@@ -15,13 +17,14 @@ var data = [ 'm 0 0 l 10 10 60 60 70 400 z'
            , texas()
            , signature()
            , heart()
-           ].map(function (d) { return d.toUpperCase() })
+           ]
+           .map(function (d) { return d.toUpperCase() })
 
 var strokes = rando()
 var svgPath = svg.style('background', '#333').selectAll('path')
               .data(data).enter().append('path')
 
-svgPath.attr('d', function (d) { return d })
+svgPath.attr('d', function (d) { return d.toString() })
 .attr('stroke-width', 5)
 .attr('stroke', stroke)
 .attr('fill', 'none')
@@ -38,10 +41,36 @@ var join = d3.select(pathgl('canvas', 'svg'))
          .data(data)
 
 join.enter().append('path')
-.attr('d', function (d) { return d })
+.attr('d', function (d) { return d.toString() })
 .attr('stroke', stroke)
 .transition().duration(1000).call(function () { strokes = rando() })
 .attr('stroke', stroke)
+.each('end', function k() {
+  join.transition().duration(1000).attr('stroke', stroke).each('end', k)
+})
+
+
+function invoke (obj, method) {
+  return obj.method.apply(this, [].slice.call(arguments))
+}
+
+var invokeWith = function (method) {
+  var args = [].slice.call(arguments)
+  return function (obj) {
+    return invoke(method, [].concat.call(arguments, args).reverse())
+  }
+}
+
+function color(selection) {
+  selection.transition().duration(1000).attr('stroke', stroke)
+}
+
+function recur (selection, fn) {
+  selection
+  .transition().duration(500)
+  .call(fn)
+  .each('end', recur, selection, fn)
+}
 
 join.exit().remove()
 
