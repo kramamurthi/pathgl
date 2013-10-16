@@ -13,6 +13,29 @@ d3.select(window).on('load', function () {
 //geo, hexbin, force, arc
 function woah () {
   //start
+  function test (b) {
+    var join = d3.select(b ? 'svg' : pathgl('canvas'))
+               .selectAll('path')
+               .data(data)
+
+    join.enter().append('path')
+    .attr('d', function (d) { return d.toString() })
+    .attr('stroke', stroke)
+    .attr('stroke-width', 1)
+    .attr('fill', 'none')
+    .transition().duration(1000)
+    .attr('stroke', stroke)
+    .each('end', function k(d, i) {
+      if (i == 0 && (this.parentElement || {}).tagName == 'svg')
+        strokes = rando()
+
+      join.transition().duration(1000)
+      .attr('stroke', stroke)
+      .each('end', k)
+      .attr('d', function (d) { return d.toString() })
+    })
+  }
+
   var x = 1
   var line = d3.svg.line()
              .x(function(d){ return d * 2})
@@ -34,27 +57,8 @@ function woah () {
   setInterval(function () {
     x = Math.random()
   }, 2000)
+
   var strokes = rando()
-
-  function test (b) {
-    var join = d3.select(b ? 'svg' : pathgl('canvas'))
-               .selectAll('path')
-               .data(data)
-
-    join.enter().append('path')
-    .attr('d', function (d) { return d.toString() })
-    .attr('stroke', stroke)
-    .attr('stroke-width', 1)
-    .attr('fill', 'none')
-    .transition().duration(1000)
-    .attr('stroke', stroke)
-    .each('end', function k(d, i) {
-      if (i == 0 , (this.parentElement || {}).tagName == 'svg') strokes = rando()
-      join.transition().duration(1000).attr('stroke', stroke).each('end', k)
-      .attr('d', function (d) { return d.toString() })
-    })
-  }
-
   test(1)
   test(0)
 
