@@ -4,6 +4,7 @@ d3.select(window).on('load', function () {
     , dim = { height: 500, width: innerWidth * .499}
 
   canvas.attr(dim)
+  $('canvas').tooltip({placement: 'bottom'})
 
   Rainbow.color(woah.toString(), 'javascript', function (result) {
     var code = d3.select('.code').html(result)
