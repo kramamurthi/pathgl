@@ -22,9 +22,9 @@ function parse (str) {
 
     ;[].push.apply(path.coords, coords)
 
-    instruction ?
+    instruction.call ?
       twoEach(coords, instruction, path) :
-      console.error(segment[0] + ' ' + segment[0] + ' is not yet implemented')
+      console.error(instruction + ' ' + segment[0] + ' is not yet implemented')
   })
 }
 

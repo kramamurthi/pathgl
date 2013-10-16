@@ -4,6 +4,10 @@ var svgDomProxy =
       }
 
     , d: function (d) {
+        this.path && extend(this.path, { coords: [], length: 0 })
+
+        if (d.match(/NaN/)) return console.warn('path is invalid')
+
         parse.call(this, d)
       }
 
@@ -31,11 +35,13 @@ var svgDomProxy =
     , textContent: noop
     , removeEventListener: noop
     , addEventListener: noop
-}
+    }
 
+var id = 0
 function dom(el) {
   return extend(Object.create(svgDomProxy), {
     attr: {},
-    tagName: el.tagName
+    tagName: el.tagName,
+    id: id++
   })
 }

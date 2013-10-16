@@ -17,8 +17,8 @@ function build(_, file) {
   console.log('rebuilding ' + (file ? file : ''))
 
   try {
-    fs.writeFileSync('pathgl.js', orig)
-    fs.writeFileSync('pathgl.min.js',
+    fs.writeFileSync('dist/pathgl.js', orig)
+    fs.writeFileSync('dist/pathgl.min.js',
                      compressor.minify(orig, { fromString: true }).code
                     )
   } catch (e) { console.log(e) }

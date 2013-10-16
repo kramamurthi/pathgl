@@ -1,8 +1,11 @@
+//remove linebuffers
+//make data[] on canvas the array of proxies
 function addToBuffer(datum) {
-  var k = paths.filter(function (d) { return d.__data__d == datum.__data__ })
+  var k = paths.filter(function (d) { return d.id == datum.id })
   if (k.length) return k[0]
 
-  paths.push(lineBuffers = [])
+  paths.push(datum.path = lineBuffers = [])
+
   return extend(paths[paths.length - 1], datum, { coords: [] })
 }
 
