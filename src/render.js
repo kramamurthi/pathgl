@@ -18,7 +18,9 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
+var changed
 d3.timer(function () {
+  if (! changed) return; else changed = false
   for (var j = 0; j < paths.length; j++){
     setStroke(d3.rgb(paths[j].attr.stroke || '#000'))
     for (var i = 0; i < paths[j].length; i++) {
@@ -29,7 +31,7 @@ d3.timer(function () {
 
 function render(t) {
   //ctx.clear(ctx.COLOR_BUFFER_BIT)
-  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
+  changed = true
 }
 
 function setStroke (rgb){

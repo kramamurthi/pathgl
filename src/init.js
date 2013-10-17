@@ -34,6 +34,7 @@ function initShaders() {
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
+  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
 }
 
 function initContext(canvas) {
