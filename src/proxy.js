@@ -5,14 +5,11 @@ var svgDomProxy =
 
     , d: function (d) {
         this.path && extend(this.path, { coords: [], length: 0 })
-
-        if (d.match(/NaN/)) return console.warn('path is invalid')
-
         parse.call(this, d)
       }
 
     , stroke: function (d) {
-        render()
+        render(this)
       }
 
     , 'stroke-width': function (value) {

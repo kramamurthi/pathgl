@@ -1,4 +1,4 @@
-;function init(canvas) {
+function init(canvas) {
   initContext(canvas)
   initShaders(ctx)
   canvas.appendChild = dom
@@ -31,7 +31,10 @@ function initShaders() {
   ctx.useProgram(program)
 
   program.vertexPositionLoc = ctx.getAttribLocation(program, "aVertexPosition")
+
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
+
+  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
 }
@@ -67,7 +70,7 @@ var methods = { m: moveTo
 function parse (str) {
   var path = addToBuffer(this)
 
-  if (path.coords.length) return render(+ this)
+  if (path.coords.length) return render(path)
 
   str.match(/[a-z][^a-z]*/ig).forEach(function (segment) {
     var instruction = methods[segment[0].toLowerCase()]
@@ -76,7 +79,7 @@ function parse (str) {
     ;[].push.apply(path.coords, coords)
 
     instruction.call ?
-      twoEach(coords, instruction, path) :
+      twoEach(coords.map(parseFloat), instruction, path) :
       console.error(instruction + ' ' + segment[0] + ' is not yet implemented')
   })
 }
@@ -86,12 +89,11 @@ function moveTo(x, y) {
 }
 
 function closePath() {
-  lineTo.apply(this.path, this.coords.slice(0, 2))
-  render()
+  lineTo.apply(this, this.coords.slice(0, 2))
 }
 
 function lineTo(x, y) {
-  addLine.apply(this.path, pos.concat(pos = [x, canv.height - y]))
+  addLine.apply(this, pos.concat(pos = [x, canv.height - y]))
 }
 var svgDomProxy =
     { fill: function (val) {
@@ -100,14 +102,11 @@ var svgDomProxy =
 
     , d: function (d) {
         this.path && extend(this.path, { coords: [], length: 0 })
-
-        if (d.match(/NaN/)) return console.warn('path is invalid')
-
         parse.call(this, d)
       }
 
     , stroke: function (d) {
-        render()
+        render(this)
       }
 
     , 'stroke-width': function (value) {
@@ -139,15 +138,14 @@ function dom(el) {
     tagName: el.tagName,
     id: id++
   })
-}//remove linebuffers
-//make data[] on canvas the array of proxies
+}//make data[] on canvas the array of proxies
 function addToBuffer(datum) {
   var k = paths.filter(function (d) { return d.id == datum.id })
-  if (k.length) return k[0]
 
+  if (k.length) return k[0]
   paths.push(datum.path = [])
 
-  return extend(paths[paths.length - 1], datum, { coords: [] })
+  return extend(datum.path, { coords: [], id: datum.id })
 }
 
 function addLine(x1, y1, x2, y2) {
@@ -160,16 +158,13 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
-var count = 0
-function render(t) {
+function render(datum) {
   //ctx.clear(ctx.COLOR_BUFFER_BIT)
-  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
-  for (var j = 0; j < paths.length; j++)
-    for (var i = 0; i < paths[j].length; i++)
-      d3.queue(enclose,
-               paths[j][i],
-               paths[j].attr.stroke || '#000'
-              )
+  for (var i = 0; i < datum.path.length; i++)
+    d3.queue(enclose,
+             datum.path[i],
+             datum.attr.stroke || 'black'
+            )
 }
 
 function setStroke (rgb){
@@ -178,14 +173,14 @@ function setStroke (rgb){
   ctx.uniform1f(b, rgb.b / 256)
 }
 
+//move to render
 function enclose(buffer, rgb){
   setStroke(d3.rgb(rgb))
-  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
+  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
   ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
   ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
 }
-
-;pathgl.supportedAttributes =
+pathgl.supportedAttributes =
   [ 'd'
   , 'stroke'
   , 'strokeWidth'
@@ -211,7 +206,7 @@ pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "  gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
                 , "}"
                 ].join('\n')
-;function extend (a, b) {
+function extend (a, b) {
   if (arguments.length > 2) [].forEach.call(arguments, function (b) { extend(a, b) })
   else for (var k in b) a[k] = b[k]
   return a

@@ -31,7 +31,10 @@ function initShaders() {
   ctx.useProgram(program)
 
   program.vertexPositionLoc = ctx.getAttribLocation(program, "aVertexPosition")
+
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
+
+  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
 }
