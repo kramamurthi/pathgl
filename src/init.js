@@ -1,8 +1,17 @@
 function init(canvas) {
   initContext(canvas)
   initShaders(ctx)
-  canvas.appendChild = dom
+  override(canvas)
   return ctx
+}
+
+function override(canvas) {
+  return extend(canvas,
+                { appendChild: svgDomProxy
+                , querySelectorAll: querySelectorAll
+                , querySelector: querySelector
+                })
+
 }
 
 function compileShader (type, src) {

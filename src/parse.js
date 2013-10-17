@@ -14,7 +14,7 @@ var methods = { m: moveTo
 function parse (str) {
   var path = addToBuffer(this)
 
-  if (path.coords.length) return render(+ this)
+  if (path.coords.length) return render()
 
   str.match(/[a-z][^a-z]*/ig).forEach(function (segment) {
     var instruction = methods[segment[0].toLowerCase()]
@@ -33,10 +33,9 @@ function moveTo(x, y) {
 }
 
 function closePath() {
-  lineTo.apply(this.path, this.coords.slice(0, 2))
-  render()
+  lineTo.apply(this, this.coords.slice(0, 2))
 }
 
 function lineTo(x, y) {
-  addLine.apply(this.path, pos.concat(pos = [x, canv.height - y]))
+  addLine.apply(this, pos.concat(pos = [x, canv.height - y]))
 }

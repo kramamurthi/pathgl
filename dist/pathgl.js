@@ -1,8 +1,17 @@
 function init(canvas) {
   initContext(canvas)
   initShaders(ctx)
-  canvas.appendChild = dom
+  override(canvas)
   return ctx
+}
+
+function override(canvas) {
+  return extend(canvas,
+                { appendChild: svgDomProxy
+                , querySelectorAll: querySelectorAll
+                , querySelector: querySelector
+                })
+
 }
 
 function compileShader (type, src) {
@@ -68,7 +77,7 @@ var methods = { m: moveTo
 function parse (str) {
   var path = addToBuffer(this)
 
-  if (path.coords.length) return render(+ this)
+  if (path.coords.length) return render()
 
   str.match(/[a-z][^a-z]*/ig).forEach(function (segment) {
     var instruction = methods[segment[0].toLowerCase()]
@@ -87,14 +96,34 @@ function moveTo(x, y) {
 }
 
 function closePath() {
-  lineTo.apply(this.path, this.coords.slice(0, 2))
-  render()
+  lineTo.apply(this, this.coords.slice(0, 2))
 }
 
 function lineTo(x, y) {
-  addLine.apply(this.path, pos.concat(pos = [x, canv.height - y]))
+  addLine.apply(this, pos.concat(pos = [x, canv.height - y]))
 }
-var svgDomProxy =
+var id = 0
+var scene = []
+
+function svgDomProxy(el) {
+  var proxy = extend(Object.create(svgDomProxy.prototype), {
+    tagName: el.tagName
+  , id: id++
+  , attr: { stroke: 'black' }
+  })
+
+  scene.push(proxy)
+  return proxy
+}
+
+function querySelector(query) {
+  return scene[0]
+}
+function querySelectorAll(query) {
+  return scene
+}
+
+svgDomProxy.prototype =
     { fill: function (val) {
 
       }
@@ -132,27 +161,19 @@ var svgDomProxy =
     , removeEventListener: noop
     , addEventListener: noop
     }
-
-var id = 0
-function dom(el) {
-  return extend(Object.create(svgDomProxy), {
-    attr: {},
-    tagName: el.tagName,
-    id: id++
-  })
-}//make data[] on canvas the array of proxies
+//make data[] on canvas the array of proxies
 function addToBuffer(datum) {
   var k = paths.filter(function (d) { return d.id == datum.id })
-  if (k.length) return k[0]
+  if (k.length) return datum.path
 
-  paths.push(datum.path = [])
-
-  return extend(paths[paths.length - 1], datum, { coords: [] })
+  datum.path = []
+  return extend(datum.path, { coords: [], id: datum.id })
 }
 
 function addLine(x1, y1, x2, y2) {
   var index = this.push(ctx.createBuffer()) - 1
   var vertices = [x1, y1, 0, x2, y2, 0]
+
   ctx.bindBuffer(ctx.ARRAY_BUFFER, this[index])
   ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(vertices), ctx.STATIC_DRAW)
 
@@ -162,17 +183,22 @@ function addLine(x1, y1, x2, y2) {
 
 var changed
 d3.timer(function () {
-  if (! changed) return; else changed = false
-  for (var j = 0; j < paths.length; j++){
-    setStroke(d3.rgb(paths[j].attr.stroke || '#000'))
-    for (var i = 0; i < paths[j].length; i++) {
-      enclose(paths[j][i])
-    }
-  }
+  if (changed)
+    scene.forEach(drawPath), changed = false
 })
 
-function render(t) {
-  //ctx.clear(ctx.COLOR_BUFFER_BIT)
+function drawPath(obj) {
+  setStroke(d3.rgb(obj.attr.stroke))
+  var path = obj.path
+
+  for (var i = 0; i < path.length; i++) {
+    ctx.bindBuffer(ctx.ARRAY_BUFFER, path[i])
+    ctx.vertexAttribPointer(program.vertexPositionLoc, path[i].itemSize, ctx.FLOAT, false, 0, 0)
+    ctx.drawArrays(ctx.LINE_STRIP, 0, path[i].numItems)
+  }
+}
+
+function render() {
   changed = true
 }
 
@@ -181,14 +207,7 @@ function setStroke (rgb){
   ctx.uniform1f(g, rgb.g / 256)
   ctx.uniform1f(b, rgb.b / 256)
 }
-
-function enclose(buffer, rgb){
-  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
-  ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
-  ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
-}
-
-;pathgl.supportedAttributes =
+pathgl.supportedAttributes =
   [ 'd'
   , 'stroke'
   , 'strokeWidth'

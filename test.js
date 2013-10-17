@@ -15,7 +15,7 @@ d3.select(window).on('load', function () {
 function woah () {
   //start
   function test (b) {
-    var join = d3.select(b ? 'svg' : pathgl('canvas'))
+    join = d3.select(b ? 'svg' : pathgl('canvas'))
                .selectAll('path')
                .data(data)
 
@@ -52,12 +52,12 @@ function woah () {
              , texas()
              , signature()
              , {toString: heart}
-             , {toString: function () { return line(d3.range(innerWidth / 2)) + 'Z' }}
+             , {toString: function () { return line(d3.range(innerWidth / 10)) + 'Z' }}
              ]
 
   setInterval(function () {
-    x = Math.random()
-  }, 2000)
+    x = x === 20 ? 1 : 20
+  }, 1000)
 
   var strokes = rando()
   test(1)

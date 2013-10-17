@@ -1,4 +1,25 @@
-var svgDomProxy =
+var id = 0
+var scene = []
+
+function svgDomProxy(el) {
+  var proxy = extend(Object.create(svgDomProxy.prototype), {
+    tagName: el.tagName
+  , id: id++
+  , attr: { stroke: 'black' }
+  })
+
+  scene.push(proxy)
+  return proxy
+}
+
+function querySelector(query) {
+  return scene[0]
+}
+function querySelectorAll(query) {
+  return scene
+}
+
+svgDomProxy.prototype =
     { fill: function (val) {
 
       }
@@ -36,12 +57,3 @@ var svgDomProxy =
     , removeEventListener: noop
     , addEventListener: noop
     }
-
-var id = 0
-function dom(el) {
-  return extend(Object.create(svgDomProxy), {
-    attr: {},
-    tagName: el.tagName,
-    id: id++
-  })
-}
