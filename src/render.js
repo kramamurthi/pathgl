@@ -1,4 +1,3 @@
-//remove linebuffers
 //make data[] on canvas the array of proxies
 function addToBuffer(datum) {
   var k = paths.filter(function (d) { return d.id == datum.id })
@@ -19,16 +18,18 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
-var count = 0
+d3.timer(function () {
+  for (var j = 0; j < paths.length; j++){
+    setStroke(d3.rgb(paths[j].attr.stroke || '#000'))
+    for (var i = 0; i < paths[j].length; i++) {
+      enclose(paths[j][i])
+    }
+  }
+})
+
 function render(t) {
   //ctx.clear(ctx.COLOR_BUFFER_BIT)
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
-  for (var j = 0; j < paths.length; j++)
-    for (var i = 0; i < paths[j].length; i++)
-      d3.queue(enclose,
-               paths[j][i],
-               paths[j].attr.stroke || '#000'
-              )
 }
 
 function setStroke (rgb){
@@ -38,7 +39,6 @@ function setStroke (rgb){
 }
 
 function enclose(buffer, rgb){
-  setStroke(d3.rgb(rgb))
   ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
   ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
   ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)

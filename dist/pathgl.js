@@ -1,4 +1,4 @@
-;function init(canvas) {
+function init(canvas) {
   initContext(canvas)
   initShaders(ctx)
   canvas.appendChild = dom
@@ -139,8 +139,7 @@ function dom(el) {
     tagName: el.tagName,
     id: id++
   })
-}//remove linebuffers
-//make data[] on canvas the array of proxies
+}//make data[] on canvas the array of proxies
 function addToBuffer(datum) {
   var k = paths.filter(function (d) { return d.id == datum.id })
   if (k.length) return k[0]
@@ -160,16 +159,18 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
-var count = 0
+d3.timer(function () {
+  for (var j = 0; j < paths.length; j++){
+    setStroke(d3.rgb(paths[j].attr.stroke || '#000'))
+    for (var i = 0; i < paths[j].length; i++) {
+      enclose(paths[j][i])
+    }
+  }
+})
+
 function render(t) {
   //ctx.clear(ctx.COLOR_BUFFER_BIT)
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
-  for (var j = 0; j < paths.length; j++)
-    for (var i = 0; i < paths[j].length; i++)
-      d3.queue(enclose,
-               paths[j][i],
-               paths[j].attr.stroke || '#000'
-              )
 }
 
 function setStroke (rgb){
@@ -179,7 +180,6 @@ function setStroke (rgb){
 }
 
 function enclose(buffer, rgb){
-  setStroke(d3.rgb(rgb))
   ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer )
   ctx.vertexAttribPointer(program.vertexPositionLoc, buffer.itemSize, ctx.FLOAT, false, 0, 0)
   ctx.drawArrays(ctx.LINE_STRIP, 0, buffer.numItems)
@@ -211,7 +211,7 @@ pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "  gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
                 , "}"
                 ].join('\n')
-;function extend (a, b) {
+function extend (a, b) {
   if (arguments.length > 2) [].forEach.call(arguments, function (b) { extend(a, b) })
   else for (var k in b) a[k] = b[k]
   return a
