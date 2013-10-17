@@ -9,7 +9,6 @@ var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
 
   , canv, ctx, program, pos
   , r, g, b
-  , lineBuffers
   , red, green, blue
 
 pathgl.fragment = [ "precision mediump float;"

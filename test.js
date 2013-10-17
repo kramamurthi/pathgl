@@ -22,7 +22,7 @@ function woah () {
     join.enter().append('path')
     .attr('d', function (d) { return d.toString() })
     .attr('stroke', stroke)
-    .attr('stroke-width', 1)
+    .attr('stroke-width', 2.5)
     .attr('fill', 'none')
     .transition().duration(1000)
     .attr('stroke', stroke)

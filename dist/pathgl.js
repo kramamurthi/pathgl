@@ -86,12 +86,12 @@ function moveTo(x, y) {
 }
 
 function closePath() {
-  lineTo.apply(0, this.coords.slice(0, 2))
+  lineTo.apply(this.path, this.coords.slice(0, 2))
   render()
 }
 
 function lineTo(x, y) {
-  addLine.apply(0, pos.concat(pos = [x, canv.height - y]))
+  addLine.apply(this.path, pos.concat(pos = [x, canv.height - y]))
 }
 var svgDomProxy =
     { fill: function (val) {
@@ -145,24 +145,24 @@ function addToBuffer(datum) {
   var k = paths.filter(function (d) { return d.id == datum.id })
   if (k.length) return k[0]
 
-  paths.push(datum.path = lineBuffers = [])
+  paths.push(datum.path = [])
 
   return extend(paths[paths.length - 1], datum, { coords: [] })
 }
 
 function addLine(x1, y1, x2, y2) {
-  var index = lineBuffers.push(ctx.createBuffer()) - 1
+  var index = this.push(ctx.createBuffer()) - 1
   var vertices = [x1, y1, 0, x2, y2, 0]
-  ctx.bindBuffer(ctx.ARRAY_BUFFER, lineBuffers[index])
+  ctx.bindBuffer(ctx.ARRAY_BUFFER, this[index])
   ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(vertices), ctx.STATIC_DRAW)
 
-  lineBuffers[index].itemSize = 3
-  lineBuffers[index].numItems = vertices.length / 3
+  this[index].itemSize = 3
+  this[index].numItems = vertices.length / 3
 }
 
 var count = 0
 function render(t) {
-  ctx.clear(ctx.COLOR_BUFFER_BIT)
+  //ctx.clear(ctx.COLOR_BUFFER_BIT)
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
   for (var j = 0; j < paths.length; j++)
     for (var i = 0; i < paths[j].length; i++)
@@ -196,7 +196,6 @@ var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
 
   , canv, ctx, program, pos
   , r, g, b
-  , lineBuffers
   , red, green, blue
 
 pathgl.fragment = [ "precision mediump float;"

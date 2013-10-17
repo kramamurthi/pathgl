@@ -33,10 +33,10 @@ function moveTo(x, y) {
 }
 
 function closePath() {
-  lineTo.apply(0, this.coords.slice(0, 2))
+  lineTo.apply(this.path, this.coords.slice(0, 2))
   render()
 }
 
 function lineTo(x, y) {
-  addLine.apply(0, pos.concat(pos = [x, canv.height - y]))
+  addLine.apply(this.path, pos.concat(pos = [x, canv.height - y]))
 }
