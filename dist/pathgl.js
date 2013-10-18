@@ -184,9 +184,8 @@ svgDomProxy.prototype =
     , addEventListener: noop
     }
 //make data[] on canvas the array of proxies
-function addToBuffer(datum) {
-  if (scene.some(function (d) { return d.id == datum.id })) return datum.path
 
+function addToBuffer(datum) {
   datum.path = []
   return extend(datum.path, { coords: [], id: datum.id })
 }
