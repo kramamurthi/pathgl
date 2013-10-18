@@ -4,13 +4,6 @@ pathgl.supportedAttributes =
   , 'strokeWidth'
   ]
 
-var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
-  , paths = []
-
-  , canv, ctx, program, pos
-  , r, g, b
-  , red, green, blue
-
 pathgl.fragment = [ "precision mediump float;"
                   , "uniform float r, g, b;"
                   , "void main(void) {"

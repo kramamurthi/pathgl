@@ -60,30 +60,50 @@ function pathgl(canvas, svg) {
   return ctx ? canvas : svg
 }
 
+var id = 0
+  , scene = []
+  , pos = []
+
+  , pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
+  
+  , canv, ctx, program
+  , r, g, b
+
 this.pathgl = pathgl
 var methods = { m: moveTo
               , z: closePath
               , l: lineTo
 
-              , h: 'horizontalLine'
-              , v: 'verticalLine'
-              , c: 'curveTo'
-              , s: 'shortCurveTo'
-              , q: 'quadraticBezier'
-              , t: 'smoothQuadraticBezier'
-              , a: 'elipticalArc'
+              , h: horizontalLine
+              , v: verticalLine
+              , c: curveTo
+              , s: shortCurveTo
+              , q: quadraticBezier
+              , t: smoothQuadraticBezier
+              , a: elipticalArc
               }
+
+
+function horizontalLine() {}
+function verticalLine() {}
+function curveTo() {}
+function shortCurveTo() {}
+function quadraticBezier() {}
+function smoothQuadraticBezier () {}
+function elipticalArc(){}
 
 function parse (str) {
   var path = addToBuffer(this)
 
-  if (path.coords.length) return render()
+  if (path.length) return render()
 
-  str.match(/[a-z][^a-z]*/ig).forEach(function (segment) {
+  str.match(/[a-z][^a-z]*/ig).forEach(function (segment, i, wow) {
     var instruction = methods[segment[0].toLowerCase()]
       , coords = segment.slice(1).trim().split(/,| /g)
 
     ;[].push.apply(path.coords, coords)
+    if (instruction.name == 'closePath' && wow[i+1]) instruction.call(path, wow[i+1])
+
 
     instruction.call ?
       twoEach(coords, instruction, path) :
@@ -94,17 +114,19 @@ function parse (str) {
 function moveTo(x, y) {
   pos = [x, canv.height - y]
 }
-
-function closePath() {
-  lineTo.apply(this, this.coords.slice(0, 2))
+var subpathStart
+function closePath(next) {
+  subpathStart = pos
+  lineTo.apply(this, /m/i.test(next) ?
+               next.slice(1).trim().split(/,| /g)
+                   : this.coords.slice(0, 2)
+              )
 }
+
 
 function lineTo(x, y) {
   addLine.apply(this, pos.concat(pos = [x, canv.height - y]))
 }
-var id = 0
-var scene = []
-
 function svgDomProxy(el) {
   var proxy = extend(Object.create(svgDomProxy.prototype), {
     tagName: el.tagName
@@ -163,8 +185,7 @@ svgDomProxy.prototype =
     }
 //make data[] on canvas the array of proxies
 function addToBuffer(datum) {
-  var k = paths.filter(function (d) { return d.id == datum.id })
-  if (k.length) return datum.path
+  if (scene.some(function (d) { return d.id == datum.id })) return datum.path
 
   datum.path = []
   return extend(datum.path, { coords: [], id: datum.id })
@@ -212,13 +233,6 @@ pathgl.supportedAttributes =
   , 'stroke'
   , 'strokeWidth'
   ]
-
-var pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
-  , paths = []
-
-  , canv, ctx, program, pos
-  , r, g, b
-  , red, green, blue
 
 pathgl.fragment = [ "precision mediump float;"
                   , "uniform float r, g, b;"

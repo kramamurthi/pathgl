@@ -15,9 +15,9 @@ d3.select(window).on('load', function () {
 function woah () {
   //start
   function test (b) {
-    join = d3.select(b ? 'svg' : pathgl('canvas'))
-               .selectAll('path')
-               .data(data)
+    var join = d3.select(b ? 'svg' : pathgl('canvas'))
+           .selectAll('path')
+           .data(data)
 
     join.enter().append('path')
     .attr('d', function (d) { return d.toString() })
@@ -29,7 +29,6 @@ function woah () {
     .each('end', function k(d, i) {
       if (i == 0 && (this.parentElement || {}).tagName == 'svg')
         strokes = rando()
-
       join.transition().duration(1000)
       .attr('stroke', stroke)
       .each('end', k)

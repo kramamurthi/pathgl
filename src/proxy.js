@@ -1,6 +1,3 @@
-var id = 0
-var scene = []
-
 function svgDomProxy(el) {
   var proxy = extend(Object.create(svgDomProxy.prototype), {
     tagName: el.tagName

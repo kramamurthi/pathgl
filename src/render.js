@@ -1,7 +1,6 @@
 //make data[] on canvas the array of proxies
 function addToBuffer(datum) {
-  var k = paths.filter(function (d) { return d.id == datum.id })
-  if (k.length) return datum.path
+  if (scene.some(function (d) { return d.id == datum.id })) return datum.path
 
   datum.path = []
   return extend(datum.path, { coords: [], id: datum.id })

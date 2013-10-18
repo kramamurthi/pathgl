@@ -4,7 +4,11 @@ pathgl
 draw svg paths using webgl
 
 
-### TODO ### 
+### TODO ###
+fill: tesselate shapes into triangles 
+transform: translate
+
+
 
 * Make parser comply with spec
 
@@ -20,3 +24,5 @@ draw svg paths using webgl
   * gradient + shaders
   * color
   * opacity
+
+* antialiasing
