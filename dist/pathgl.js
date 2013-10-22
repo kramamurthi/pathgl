@@ -61,13 +61,14 @@ function pathgl(canvas, svg) {
 }
 
 var id = 0
-  , scene = []
-  , pos = []
+  , scene = [] //array of objects
+  , pos = [] //current subpath position
 
-  , pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
-  
+  , pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1) //ortho
+
   , canv, ctx, program
-  , r, g, b
+  , r, g, b // shader params
+  , rerender
 
 this.pathgl = pathgl
 var methods = { m: moveTo
@@ -92,6 +93,12 @@ function quadraticBezier() {}
 function smoothQuadraticBezier () {}
 function elipticalArc(){}
 
+function group(coords) {
+  var s = []
+  twoEach(coords, function (a, b) { s.push([a, b]) })
+  return s
+
+}
 function parse (str) {
   var path = addToBuffer(this)
 
@@ -101,9 +108,8 @@ function parse (str) {
     var instruction = methods[segment[0].toLowerCase()]
       , coords = segment.slice(1).trim().split(/,| /g)
 
-    ;[].push.apply(path.coords, coords)
-    if (instruction.name == 'closePath' && wow[i+1]) instruction.call(path, wow[i+1])
-
+    ;[].push.apply(path.coords, group(coords))
+    if (instruction.name == 'closePath' && wow[i+1]) return instruction.call(path, wow[i+1])
 
     instruction.call ?
       twoEach(coords, instruction, path) :
@@ -119,7 +125,7 @@ function closePath(next) {
   subpathStart = pos
   lineTo.apply(this, /m/i.test(next) ?
                next.slice(1).trim().split(/,| /g)
-                   : this.coords.slice(0, 2)
+                   : this.coords[0]
               )
 }
 
@@ -183,11 +189,8 @@ svgDomProxy.prototype =
     , removeEventListener: noop
     , addEventListener: noop
     }
-//make data[] on canvas the array of proxies
-
 function addToBuffer(datum) {
-  datum.path = []
-  return extend(datum.path, { coords: [], id: datum.id })
+  return extend(datum.path = [], { coords: [], id: datum.id })
 }
 
 function addLine(x1, y1, x2, y2) {
@@ -201,15 +204,14 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
-var changed
 d3.timer(function () {
-  if (changed)
-    scene.forEach(drawPath), changed = false
+  if (rerender)
+    scene.forEach(drawPath), rerender = false
 })
 
-function drawPath(obj) {
-  setStroke(d3.rgb(obj.attr.stroke))
-  var path = obj.path
+function drawPath(node) {
+  setStroke(d3.rgb(node.attr.stroke))
+  var path = node.path
 
   for (var i = 0; i < path.length; i++) {
     ctx.bindBuffer(ctx.ARRAY_BUFFER, path[i])
@@ -219,7 +221,7 @@ function drawPath(obj) {
 }
 
 function render() {
-  changed = true
+  rerender= true
 }
 
 function setStroke (rgb){

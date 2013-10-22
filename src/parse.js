@@ -20,6 +20,12 @@ function quadraticBezier() {}
 function smoothQuadraticBezier () {}
 function elipticalArc(){}
 
+function group(coords) {
+  var s = []
+  twoEach(coords, function (a, b) { s.push([a, b]) })
+  return s
+
+}
 function parse (str) {
   var path = addToBuffer(this)
 
@@ -29,9 +35,8 @@ function parse (str) {
     var instruction = methods[segment[0].toLowerCase()]
       , coords = segment.slice(1).trim().split(/,| /g)
 
-    ;[].push.apply(path.coords, coords)
-    if (instruction.name == 'closePath' && wow[i+1]) instruction.call(path, wow[i+1])
-
+    ;[].push.apply(path.coords, group(coords))
+    if (instruction.name == 'closePath' && wow[i+1]) return instruction.call(path, wow[i+1])
 
     instruction.call ?
       twoEach(coords, instruction, path) :
@@ -47,7 +52,7 @@ function closePath(next) {
   subpathStart = pos
   lineTo.apply(this, /m/i.test(next) ?
                next.slice(1).trim().split(/,| /g)
-                   : this.coords.slice(0, 2)
+                   : this.coords[0]
               )
 }
 

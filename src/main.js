@@ -4,12 +4,13 @@ function pathgl(canvas, svg) {
 }
 
 var id = 0
-  , scene = []
-  , pos = []
+  , scene = [] //array of objects
+  , pos = [] //current subpath position
 
-  , pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1)
-  
+  , pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1) //ortho
+
   , canv, ctx, program
-  , r, g, b
+  , r, g, b // shader params
+  , rerender
 
 this.pathgl = pathgl

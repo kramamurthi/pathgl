@@ -1,8 +1,5 @@
-//make data[] on canvas the array of proxies
-
 function addToBuffer(datum) {
-  datum.path = []
-  return extend(datum.path, { coords: [], id: datum.id })
+  return extend(datum.path = [], { coords: [], id: datum.id })
 }
 
 function addLine(x1, y1, x2, y2) {
@@ -16,15 +13,14 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
-var changed
 d3.timer(function () {
-  if (changed)
-    scene.forEach(drawPath), changed = false
+  if (rerender)
+    scene.forEach(drawPath), rerender = false
 })
 
-function drawPath(obj) {
-  setStroke(d3.rgb(obj.attr.stroke))
-  var path = obj.path
+function drawPath(node) {
+  setStroke(d3.rgb(node.attr.stroke))
+  var path = node.path
 
   for (var i = 0; i < path.length; i++) {
     ctx.bindBuffer(ctx.ARRAY_BUFFER, path[i])
@@ -34,7 +30,7 @@ function drawPath(obj) {
 }
 
 function render() {
-  changed = true
+  rerender= true
 }
 
 function setStroke (rgb){
