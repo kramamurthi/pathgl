@@ -5,6 +5,8 @@ function init(canvas) {
   return ctx
 }
 
+
+
 function override(canvas) {
   return extend(canvas,
                 { appendChild: svgDomProxy
@@ -48,7 +50,7 @@ function initShaders() {
 
 function initContext(canvas) {
   canv = canvas
-  pos = [0, canv.height]
+
 
   ctx = canvas.getContext('webgl', { antialias: false })
   if (! ctx) return

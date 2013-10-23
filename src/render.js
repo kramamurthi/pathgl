@@ -15,7 +15,7 @@ function addLine(x1, y1, x2, y2) {
 
 d3.timer(function () {
   if (rerender)
-    scene.forEach(drawPath), rerender = false
+    rerender = scene.forEach(drawPath)
 })
 
 function drawPath(node) {
@@ -30,7 +30,7 @@ function drawPath(node) {
 }
 
 function render() {
-  rerender= true
+  rerender = true
 }
 
 function setStroke (rgb){

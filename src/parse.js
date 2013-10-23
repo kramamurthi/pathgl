@@ -21,7 +21,9 @@ function smoothQuadraticBezier () {}
 function elipticalArc(){}
 
 function group(coords) {
+  return coords
   var s = []
+
   twoEach(coords, function (a, b) { s.push([a, b]) })
   return s
 
@@ -52,7 +54,7 @@ function closePath(next) {
   subpathStart = pos
   lineTo.apply(this, /m/i.test(next) ?
                next.slice(1).trim().split(/,| /g)
-                   : this.coords[0]
+                   : this.coords.slice(0, 2)
               )
 }
 

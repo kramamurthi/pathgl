@@ -5,6 +5,8 @@ function init(canvas) {
   return ctx
 }
 
+
+
 function override(canvas) {
   return extend(canvas,
                 { appendChild: svgDomProxy
@@ -48,7 +50,7 @@ function initShaders() {
 
 function initContext(canvas) {
   canv = canvas
-  pos = [0, canv.height]
+
 
   ctx = canvas.getContext('webgl', { antialias: false })
   if (! ctx) return
@@ -94,7 +96,9 @@ function smoothQuadraticBezier () {}
 function elipticalArc(){}
 
 function group(coords) {
+  return coords
   var s = []
+
   twoEach(coords, function (a, b) { s.push([a, b]) })
   return s
 
@@ -125,7 +129,7 @@ function closePath(next) {
   subpathStart = pos
   lineTo.apply(this, /m/i.test(next) ?
                next.slice(1).trim().split(/,| /g)
-                   : this.coords[0]
+                   : this.coords.slice(0, 2)
               )
 }
 
@@ -134,14 +138,13 @@ function lineTo(x, y) {
   addLine.apply(this, pos.concat(pos = [x, canv.height - y]))
 }
 function svgDomProxy(el) {
-  var proxy = extend(Object.create(svgDomProxy.prototype), {
-    tagName: el.tagName
-  , id: id++
-  , attr: { stroke: 'black' }
-  })
+  if (! (this instanceof svgDomProxy)) return new svgDomProxy(el);
 
-  scene.push(proxy)
-  return proxy
+  scene.push(this)
+
+  this.tagName = el.tagName
+  this.id = id++
+  this.attr = { stroke: 'black' }
 }
 
 function querySelector(query) {
@@ -153,7 +156,7 @@ function querySelectorAll(query) {
 
 svgDomProxy.prototype =
     { fill: function (val) {
-
+        drawPolygon(this.path.coords)
       }
 
     , d: function (d) {
@@ -189,7 +192,21 @@ svgDomProxy.prototype =
     , removeEventListener: noop
     , addEventListener: noop
     }
-function addToBuffer(datum) {
+
+function drawPolygon(points) {
+  var itemSize = 3
+  var numItems = points.length / itemSize
+  ctx.clear(ctx.COLOR_BUFFER_BIT);
+  points = points.map(function (d) { return parseInt(d, 0) }).filter(function (d) { return d })
+  var posBuffer = ctx.createBuffer()
+  //debugger
+  console.log(points)
+  ctx.bindBuffer(ctx.ARRAY_BUFFER, posBuffer)
+  ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(points), ctx.STATIC_DRAW)
+  ctx.vertexAttribPointer(program.vertexPositionLoc, itemSize, ctx.FLOAT, false, 0, 0)
+
+  ctx.drawArrays(ctx.TRIANGLE_FAN, 0, numItems)
+}function addToBuffer(datum) {
   return extend(datum.path = [], { coords: [], id: datum.id })
 }
 
@@ -206,7 +223,7 @@ function addLine(x1, y1, x2, y2) {
 
 d3.timer(function () {
   if (rerender)
-    scene.forEach(drawPath), rerender = false
+    rerender = scene.forEach(drawPath)
 })
 
 function drawPath(node) {
@@ -221,7 +238,7 @@ function drawPath(node) {
 }
 
 function render() {
-  rerender= true
+  rerender = true
 }
 
 function setStroke (rgb){

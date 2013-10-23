@@ -41,6 +41,9 @@ function woah () {
              .x(function(d){ return d * 2})
              .y(function(d){ return d * x })
 
+
+  var k = d3.svg.symbol().type('circle').size(1000)()
+
   var data = [ 'M 0 0 L 10 10 60 60 70 400 Z'
              , 'M 50 60 L 60 50 50 60 40 50 50 40 60 50 Z'
 
@@ -53,6 +56,7 @@ function woah () {
              , {toString: heart}
              , {toString: function () { return line(d3.range(innerWidth / 10)) + 'Z' }}
              ]
+
 
   setInterval(function () {
     x = x === 20 ? 1 : 20

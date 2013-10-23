@@ -1,12 +1,11 @@
 function svgDomProxy(el) {
-  var proxy = extend(Object.create(svgDomProxy.prototype), {
-    tagName: el.tagName
-  , id: id++
-  , attr: { stroke: 'black' }
-  })
+  if (! (this instanceof svgDomProxy)) return new svgDomProxy(el);
 
-  scene.push(proxy)
-  return proxy
+  scene.push(this)
+
+  this.tagName = el.tagName
+  this.id = id++
+  this.attr = { stroke: 'black' }
 }
 
 function querySelector(query) {
@@ -18,7 +17,7 @@ function querySelectorAll(query) {
 
 svgDomProxy.prototype =
     { fill: function (val) {
-
+        drawPolygon(this.path.coords)
       }
 
     , d: function (d) {
@@ -54,3 +53,18 @@ svgDomProxy.prototype =
     , removeEventListener: noop
     , addEventListener: noop
     }
+
+function drawPolygon(points) {
+  var itemSize = 3
+  var numItems = points.length / itemSize
+  ctx.clear(ctx.COLOR_BUFFER_BIT);
+  points = points.map(function (d) { return parseInt(d, 0) }).filter(function (d) { return d })
+  var posBuffer = ctx.createBuffer()
+  //debugger
+  console.log(points)
+  ctx.bindBuffer(ctx.ARRAY_BUFFER, posBuffer)
+  ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(points), ctx.STATIC_DRAW)
+  ctx.vertexAttribPointer(program.vertexPositionLoc, itemSize, ctx.FLOAT, false, 0, 0)
+
+  ctx.drawArrays(ctx.TRIANGLE_FAN, 0, numItems)
+}
