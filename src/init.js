@@ -49,7 +49,6 @@ function initShaders() {
 function initContext(canvas) {
   canv = canvas
 
-
   ctx = canvas.getContext('webgl', { antialias: false })
   if (! ctx) return
   ctx.viewportWidth = canvas.width

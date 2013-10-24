@@ -4,7 +4,7 @@ d3.select(window).on('load', function () {
     , dim = { height: 500, width: innerWidth * .499}
 
   canvas.attr(dim)
-  $('canvas').tooltip({placement: 'bottom'})
+  window.$ && $('canvas').tooltip({ placement: 'bottom' })
 
   Rainbow.color(woah.toString(), 'javascript', function (result) {
     var code = d3.select('.code').html(result)
@@ -26,14 +26,15 @@ function woah () {
     .attr('fill', 'pink')
     .transition().duration(1000)
     .attr('stroke', stroke)
-    .each('end', function k(d, i) {
-      if (i == 0 && (this.parentElement || {}).tagName == 'svg')
-        strokes = rando()
-      join.transition().duration(1000)
-      .attr('stroke', stroke)
-      .each('end', k)
-      .attr('d', function (d) { return d.toString() })
-    })
+
+    // .each('end', function k(d, i) {
+    //   if (i == 0 && (this.parentElement || {}).tagName == 'svg')
+    //     strokes = rando()
+    //   join.transition().duration(1000)
+    //   .attr('stroke', stroke)
+    //   .each('end', k)
+    //   .attr('d', function (d) { return d.toString() })
+    // })
   }
 
   var x = 1

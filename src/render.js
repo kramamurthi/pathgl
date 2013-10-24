@@ -35,10 +35,9 @@ function render() {
 }
 
 function setStroke (c){
-  ctx.uniform4fv(rgb,
-                 [c.r / 256,
-                  c.g / 256,
-                  c.b / 256,
-                  1.0])
-
+  ctx.uniform4f(rgb,
+                c.r / 256,
+                c.g / 256,
+                c.b / 256,
+                1.0)
 }
