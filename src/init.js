@@ -33,9 +33,7 @@ function initShaders() {
   ctx.attachShader(program, fragmentShader)
   ctx.linkProgram(program)
 
-  r = ctx.getUniformLocation(program, 'r')
-  g = ctx.getUniformLocation(program, 'g')
-  b = ctx.getUniformLocation(program, 'b')
+  rgb = ctx.getUniformLocation(program, 'rgb')
 
   if (! ctx.getProgramParameter(program, ctx.LINK_STATUS)) return console.error("Shader is broken")
 

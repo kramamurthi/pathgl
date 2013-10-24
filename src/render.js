@@ -15,6 +15,7 @@ function addLine(x1, y1, x2, y2) {
 
 d3.timer(function () {
   if (rerender)
+    ctx.clear(ctx.COLOR_BUFFER_BIT),
     rerender = scene.forEach(drawPath)
 })
 
@@ -33,8 +34,11 @@ function render() {
   rerender = true
 }
 
-function setStroke (rgb){
-  ctx.uniform1f(r, rgb.r / 256)
-  ctx.uniform1f(g, rgb.g / 256)
-  ctx.uniform1f(b, rgb.b / 256)
+function setStroke (c){
+  ctx.uniform4fv(rgb,
+                 [c.r / 256,
+                  c.g / 256,
+                  c.b / 256,
+                  1.0])
+
 }

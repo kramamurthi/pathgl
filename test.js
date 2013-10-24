@@ -23,7 +23,7 @@ function woah () {
     .attr('d', function (d) { return d.toString() })
     .attr('stroke', stroke)
     .attr('stroke-width', 2.5)
-    .attr('fill', 'none')
+    .attr('fill', 'pink')
     .transition().duration(1000)
     .attr('stroke', stroke)
     .each('end', function k(d, i) {

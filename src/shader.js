@@ -5,9 +5,9 @@ pathgl.supportedAttributes =
   ]
 
 pathgl.fragment = [ "precision mediump float;"
-                  , "uniform float r, g, b;"
+                  , "uniform vec4 rgb;"
                   , "void main(void) {"
-                  , "  gl_FragColor = vec4(r, g, b, 1.0);"
+                  , "  gl_FragColor = rgb;"
                   , "}"
                   ].join('\n')
 
