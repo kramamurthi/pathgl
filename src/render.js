@@ -21,6 +21,7 @@ d3.timer(function () {
 
 function drawPath(node) {
   setStroke(d3.rgb(node.attr.stroke))
+
   var path = node.path
 
   for (var i = 0; i < path.length; i++) {

@@ -44,12 +44,14 @@ function initShaders() {
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
+
+  program.xyz = ctx.getUniformLocation(program, "xyz")
+  ctx.uniform3fv(program.xyz, [0, 0, 0])
 }
 
 function initContext(canvas) {
   canv = canvas
-
-  ctx = canvas.getContext('webgl', { antialias: false })
+  ctx = canvas.getContext('webgl')
   if (! ctx) return
   ctx.viewportWidth = canvas.width
   ctx.viewportHeight = canvas.height
@@ -137,7 +139,9 @@ function svgDomProxy(el) {
 
   this.tagName = el.tagName
   this.id = id++
-  this.attr = { stroke: 'black' }
+  this.attr = { stroke: 'black'
+              , fill: 'black'
+              }
 }
 
 function querySelector(query) {
@@ -147,21 +151,19 @@ function querySelectorAll(query) {
   return scene
 }
 
+
+var types = [
+]
 svgDomProxy.prototype =
     {
-      r: function () {}
-    , cx: function () {}
-    , cy: function () {
+      r: function () {
         addToBuffer(this)
-        this.path.coords = circle(this.attr.cx,
-                                  this.attr.cy,
-                                  this.attr.r
-                                 )
+        this.path.coords = circlePoints(this.attr.r)
       }
+    , cx: function (cx) { }
+    , cy: function (cy) { }
 
     , fill: function (val) {
-        function integer(d) { return parseInt(d, 10) }
-        function identity(d) { return d }
         drawPolygon.call(this, this.path.coords
                     // .map(function (d) { return d.map(integer).filter(identity) })
                     // .map(function (d) { d.push(0); return d })
@@ -203,22 +205,24 @@ svgDomProxy.prototype =
     , addEventListener: noop
     }
 
-var circ = extend(Object.create(svgDomProxy), {
+var circleProto = extend(Object.create(svgDomProxy), {
   r: ''
 , cx: ''
 , cy: ''
 
 })
 
-var path = extend(Object.create(svgDomProxy), {
+var pathProto = extend(Object.create(svgDomProxy), {
   d: ''
 })
 
 function drawPolygon(points) {
-  setStroke(d3.rgb(this.attr ? this.attr.fill : 'pink'))
+  setStroke(d3.rgb(this.attr.fill))
+  ctx.uniform3f(program.xyz, +this.attr.cx, this.attr.cy, 0)
+
   var itemSize = 3
   var numItems = points.length / itemSize
-  //ctx.clear(ctx.COLOR_BUFFER_BIT);
+  //ctx.clear(ctx.COLOR_BUFFER_BIT)
   //points = flatten(points)
   var posBuffer = ctx.createBuffer()
   ctx.bindBuffer(ctx.ARRAY_BUFFER, posBuffer)
@@ -238,15 +242,16 @@ var flatten = function(input) {
   return output
 };
 
-function circle(cx, cy, r) {
+function circlePoints(r) {
   var a = []
-  for (var i = 0; i < 360; i+=10)
-    a.push(cx + r * Math.cos(i * Math.PI / 180),
-           cy + r * Math.sin(i * Math.PI / 180),
+  for (var i = 0; i < 360; i+=50)
+    a.push(50 + r * Math.cos(i * Math.PI / 180),
+           50 + r * Math.sin(i * Math.PI / 180),
            0
           )
   return a
-}function addToBuffer(datum) {
+}
+function addToBuffer(datum) {
   return extend(datum.path = [], { coords: [], id: datum.id })
 }
 
@@ -269,6 +274,7 @@ d3.timer(function () {
 
 function drawPath(node) {
   setStroke(d3.rgb(node.attr.stroke))
+
   var path = node.path
 
   for (var i = 0; i < path.length; i++) {
@@ -304,8 +310,9 @@ pathgl.fragment = [ "precision mediump float;"
 
 pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "uniform mat4 uPMatrix;"
+                , "uniform vec3 xyz;"
                 , "void main(void) {"
-                , "  gl_Position = uPMatrix * vec4(aVertexPosition, 1.0);"
+                , "  gl_Position = uPMatrix * vec4(xyz + aVertexPosition, 1.0);"
                 , "}"
                 ].join('\n')
 function extend (a, b) {

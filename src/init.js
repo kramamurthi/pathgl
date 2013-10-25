@@ -44,12 +44,14 @@ function initShaders() {
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
+
+  program.xyz = ctx.getUniformLocation(program, "xyz")
+  ctx.uniform3fv(program.xyz, [0, 0, 0])
 }
 
 function initContext(canvas) {
   canv = canvas
-
-  ctx = canvas.getContext('webgl', { antialias: false })
+  ctx = canvas.getContext('webgl')
   if (! ctx) return
   ctx.viewportWidth = canvas.width
   ctx.viewportHeight = canvas.height
