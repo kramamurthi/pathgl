@@ -145,26 +145,31 @@ function svgDomProxy(el) {
 }
 
 function querySelector(query) {
-  return scene[0]
+  return querySelectorAll('query')[0]
 }
 function querySelectorAll(query) {
   return scene
 }
 
+var types = []
 
-var types = [
-]
 svgDomProxy.prototype =
     {
       r: function () {
         addToBuffer(this)
         this.path.coords = circlePoints(this.attr.r)
+        this.buffer = buildBuffer(this.path.coords)
       }
-    , cx: function (cx) { }
-    , cy: function (cy) { }
+    , cx: function (cx) {
+        this.path && drawPolygon.call(this, this.buffer)
+      }
+    , cy: function (cy) {
+
+        this.path && drawPolygon.call(this, this.buffer)
+      }
 
     , fill: function (val) {
-        drawPolygon.call(this, this.path.coords
+        drawPolygon.call(this, this.buffer
                     // .map(function (d) { return d.map(integer).filter(identity) })
                     // .map(function (d) { d.push(0); return d })
                     // .filter(function (d) { return d.length == 3 })
@@ -209,38 +214,42 @@ var circleProto = extend(Object.create(svgDomProxy), {
   r: ''
 , cx: ''
 , cy: ''
-
 })
 
 var pathProto = extend(Object.create(svgDomProxy), {
   d: ''
 })
 
-function drawPolygon(points) {
-  setStroke(d3.rgb(this.attr.fill))
-  ctx.uniform3f(program.xyz, +this.attr.cx, this.attr.cy, 0)
+count = 0
 
-  var itemSize = 3
-  var numItems = points.length / itemSize
-  //ctx.clear(ctx.COLOR_BUFFER_BIT)
-  //points = flatten(points)
-  var posBuffer = ctx.createBuffer()
-  ctx.bindBuffer(ctx.ARRAY_BUFFER, posBuffer)
+
+function buildBuffer(points){
+  var buffer = ctx.createBuffer()
+  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
   ctx.bufferData(ctx.ARRAY_BUFFER, new Float32Array(points), ctx.STATIC_DRAW)
-  ctx.vertexAttribPointer(0, itemSize, ctx.FLOAT, false, 0, 0)
+  buffer.numItems = points.length / 3
+  return buffer
+}
 
-  ctx.drawArrays(ctx.TRIANGLE_FAN, 0, numItems)
+function drawPolygon(buffer) {
+  setStroke(d3.rgb(this.attr.fill))
+  ctx.uniform3f(program.xyz, this.attr.cx || 0, this.attr.cy || 0, 0)
+
+  //points = flatten(points)
+  ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
+
+  ctx.vertexAttribPointer(0, 3, ctx.FLOAT, false, 0, 0)
+
+  ctx.drawArrays(ctx.TRIANGLE_FAN, 0, buffer.numItems)
 }
 
 var flatten = function(input) {
   var output = []
   input.forEach(function(value) {
-    Array.isArray(value) ?
-      [].push.apply(output, value) :
-      output.push(value)
+    Array.isArray(value) ? [].push.apply(output, value) : output.push(value)
   })
   return output
-};
+}
 
 function circlePoints(r) {
   var a = []
