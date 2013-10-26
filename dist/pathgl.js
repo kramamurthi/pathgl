@@ -161,18 +161,19 @@ svgDomProxy.prototype =
         this.buffer = buildBuffer(this.path.coords)
       }
     , cx: function (cx) {
-        this.path && drawPolygon.call(this, this.buffer)
+        this.buffer && drawPolygon.call(this, this.buffer)
       }
     , cy: function (cy) {
 
-        this.path && drawPolygon.call(this, this.buffer)
+        this.buffer && drawPolygon.call(this, this.buffer)
       }
 
     , fill: function (val) {
+        if (this.tagName == 'PATH') return
         drawPolygon.call(this, this.buffer
-                    // .map(function (d) { return d.map(integer).filter(identity) })
-                    // .map(function (d) { d.push(0); return d })
-                    // .filter(function (d) { return d.length == 3 })
+                         // .map(function (d) { return d.map(integer).filter(identity) })
+                         // .map(function (d) { d.push(0); return d })
+                         // .filter(function (d) { return d.length == 3 })
                    )
       }
 
@@ -219,8 +220,6 @@ var circleProto = extend(Object.create(svgDomProxy), {
 var pathProto = extend(Object.create(svgDomProxy), {
   d: ''
 })
-
-count = 0
 
 
 function buildBuffer(points){
@@ -324,7 +323,25 @@ pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "  gl_Position = uPMatrix * vec4(xyz + aVertexPosition, 1.0);"
                 , "}"
                 ].join('\n')
-function extend (a, b) {
+
+
+
+pathgl.fragment = [
+  "precision mediump float;"
+, "uniform vec4 rgb;"
+, 'void main(void) {'
+
+, 'float time = 100.0;'
+, 'vec2 position = gl_FragCoord.xy / vec2(1000, 500);'
+, 'float color = 0.0;'
+
+, 'color += sin( position.x * cos( time / 15.0 ) * 80.0 ) + sin( position.y * tan( time / 15.0 ) * 10.0 );'
+, 'color += sin( position.y * tan( time / 10.0 ) * 40.0 ) + sin( position.x * sin( time / 25.0 ) * 40.0 );'
+, 'color += sin( position.x * sin( time / 5.0 ) * 10.0 ) + sin( position.y * sin( time / 35.0 ) * 80.0 );'
+, 'color *= sin( time / 10.0 ) * 0.5;'
+, 'gl_FragColor = vec4( vec3( color, color * 0.5, sin( color + cos(time / 3.0) ) * 0.75 ), 1.0 );'
+, '}'
+].join('\n');function extend (a, b) {
   if (arguments.length > 2) [].forEach.call(arguments, function (b) { extend(a, b) })
   else for (var k in b) a[k] = b[k]
   return a

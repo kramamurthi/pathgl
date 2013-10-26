@@ -1,7 +1,7 @@
 var w = innerWidth
   , h = innerHeight
 
-var data = d3.range(5e4).map(function (d) { return [ Math.random() * w
+var data = d3.range(1e3).map(function (d) { return [ Math.random() * w
                                                    , Math.random() * h ] })
 
 var c = d3.select(pathgl('canvas'))

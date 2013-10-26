@@ -27,18 +27,19 @@ svgDomProxy.prototype =
         this.buffer = buildBuffer(this.path.coords)
       }
     , cx: function (cx) {
-        this.path && drawPolygon.call(this, this.buffer)
+        this.buffer && drawPolygon.call(this, this.buffer)
       }
     , cy: function (cy) {
 
-        this.path && drawPolygon.call(this, this.buffer)
+        this.buffer && drawPolygon.call(this, this.buffer)
       }
 
     , fill: function (val) {
+        if (this.tagName == 'PATH') return
         drawPolygon.call(this, this.buffer
-                    // .map(function (d) { return d.map(integer).filter(identity) })
-                    // .map(function (d) { d.push(0); return d })
-                    // .filter(function (d) { return d.length == 3 })
+                         // .map(function (d) { return d.map(integer).filter(identity) })
+                         // .map(function (d) { d.push(0); return d })
+                         // .filter(function (d) { return d.length == 3 })
                    )
       }
 
@@ -85,8 +86,6 @@ var circleProto = extend(Object.create(svgDomProxy), {
 var pathProto = extend(Object.create(svgDomProxy), {
   d: ''
 })
-
-count = 0
 
 
 function buildBuffer(points){
