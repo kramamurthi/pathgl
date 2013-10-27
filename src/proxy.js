@@ -117,12 +117,16 @@ var flatten = function(input) {
   return output
 }
 
+var memo = {}
 function circlePoints(r) {
+  if (memo[r]) return memo[r]
+
   var a = []
   for (var i = 0; i < 360; i+=25)
     a.push(50 + r * Math.cos(i * Math.PI / 180),
            50 + r * Math.sin(i * Math.PI / 180),
            0
           )
-  return a
+
+  return memo[r] = a
 }

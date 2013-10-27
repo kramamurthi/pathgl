@@ -8,8 +8,6 @@ draw svg paths using webgl
 fill: tesselate shapes into triangles 
 transform: translate
 
-
-
 * Make parser comply with spec
 
 * stroke
@@ -26,6 +24,4 @@ transform: translate
   * opacity
 
 * antialiasing
-
-
 * event listeners
