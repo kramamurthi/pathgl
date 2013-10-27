@@ -5,8 +5,6 @@ function init(canvas) {
   return ctx
 }
 
-
-
 function override(canvas) {
   return extend(canvas,
                 { appendChild: svgDomProxy
@@ -31,28 +29,33 @@ function initShaders() {
   program = ctx.createProgram()
   ctx.attachShader(program, vertexShader)
   ctx.attachShader(program, fragmentShader)
-  ctx.linkProgram(program)
 
-  rgb = ctx.getUniformLocation(program, 'rgb')
+  ctx.linkProgram(program)
+  ctx.useProgram(program)
 
   if (! ctx.getProgramParameter(program, ctx.LINK_STATUS)) return console.error("Shader is broken")
 
-  ctx.useProgram(program)
+  var shaderParameters = {
+      rgb: [0,0,0, 0]
+    //, uPmatrix: pmatrix
+    , xyz: [0,0,0]
+    , time: [0]
+    , resolution: [innerWidth, innerHeight]
+  }
+
+  each(shaderParameters, bindUniform)
 
   program.vertexPositionLoc = ctx.getAttribLocation(program, "aVertexPosition")
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
+ }
 
-  program.xyz = ctx.getUniformLocation(program, "xyz")
-  ctx.uniform3fv(program.xyz, [0, 0, 0])
-
-  program.time = ctx.getUniformLocation(program, "time")
-  ctx.uniform1f(program.time, 0)
-
-  program.resolution = ctx.getUniformLocation(program, "resolution")
-  ctx.uniform2fv(program.resolution, [innerWidth, innerHeight])
+function bindUniform(val, key) {
+  program[key] = ctx.getUniformLocation(program, key)
+  console.log(key, val.length)
+  if (val) ctx['uniform' + val.length  +  'fv'](program[key], val)
 }
 
 function initContext(canvas) {
@@ -62,7 +65,11 @@ function initContext(canvas) {
   ctx.viewportWidth = canvas.width
   ctx.viewportHeight = canvas.height
 }
-function pathgl(canvas, svg) {
+
+
+function each(obj, fn) {
+  for(var key in obj) fn(obj[key], key, obj)
+}function pathgl(canvas, svg) {
   init(d3.select(canvas).node())
   return ctx ? canvas : svg
 }
@@ -165,6 +172,7 @@ svgDomProxy.prototype =
         addToBuffer(this)
         this.path.coords = circlePoints(this.attr.r)
         this.buffer = buildBuffer(this.path.coords)
+        drawPolygon.call(this, this.buffer)
       }
     , cx: function (cx) {
         this.buffer && drawPolygon.call(this, this.buffer)
@@ -281,11 +289,8 @@ function addLine(x1, y1, x2, y2) {
 }
 
 d3.timer(function (elapsed) {
- if (rerender)
-    ctx.clear(ctx.COLOR_BUFFER_BIT),
-    rerender = scene.forEach(drawPath)
-
   ctx.uniform1f(program.time, pathgl.time = elapsed)
+  scene.forEach(drawPath)
 })
 
 function drawPath(node) {
@@ -294,7 +299,6 @@ function drawPath(node) {
   var path = node.path
 
   for (var i = 0; i < path.length; i++) {
-
     ctx.bindBuffer(ctx.ARRAY_BUFFER, path[i])
     ctx.vertexAttribPointer(program.vertexPositionLoc, path[i].itemSize, ctx.FLOAT, false, 0, 0)
     ctx.drawArrays(ctx.LINE_STRIP, 0, path[i].numItems)
@@ -306,7 +310,7 @@ function render() {
 }
 
 function setStroke (c){
-  ctx.uniform4f(rgb,
+  ctx.uniform4f(program.rgb,
                 c.r / 256,
                 c.g / 256,
                 c.b / 256,
@@ -336,22 +340,19 @@ pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 ].join('\n')
 
 
-
 pathgl.fragment = [
   "precision mediump float;"
 , "uniform float time;"
 , "uniform vec2 mouse;"
 , "uniform vec2 resolution;"
-, ""
-        , "const float fog_density = 1.05;"
-, ""
+, "const float fog_density = 1.05;"
 , "vec2 rand22(in vec2 p)"
 , "{"
 , "return fract(vec2(sin(p.x * 591.32 + p.y * 154.077), cos(p.x * 391.32 + p.y * 49.077)));"
 , "}"
 , "float rand12(vec2 p)"
 , "{"
-    , "return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5357);"
+, "return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5357);"
 , "}"
 , "vec2 rand21(float p)"
 , "{"
@@ -407,23 +408,19 @@ pathgl.fragment = [
 , "uv.x *= resolution.x / resolution.y;"
 , ""
 , ""
-// , "ray origin"
 , "vec3 ro = vec3(10, 10.0, time * 0.0);"
 , "ro.y = 0.0;"
-// , "camera look at"
 , "vec3 ta = vec3(10.0, 512.0, 5.0);"
 , ""
 , "vec3 ww = normalize(ro - ta);"
 , "vec3 uu = normalize(cross(ww, normalize(vec3(0.0, 1.0, 0.0))));"
 , "vec3 vv = normalize(cross(uu, ww));"
-// , "obtain ray direction"
 , "vec3 rd = normalize(uv.x * uu + uv.y * vv + 1.0 * ww);"
 , ""
 , "vec3 its;"
 , "float v, g;"
 , "vec3 inten = vec3(0.0);"
 , ""
-// , "voronoi floor layers"
 , "for(int i = 0; i < 16; i ++)"
 , "{"
 , "float layer = float(i);"
@@ -435,7 +432,6 @@ pathgl.fragment = [
 , ""
 , "float fx = 0.0;"
 , ""
-// , "add some special fx to lowest layer"
 , "if(i == 6)"
 , "{"
 , "float crd = 0.0;//fract(time * 0.2) * 50.0 - 25.0;"

@@ -14,11 +14,8 @@ function addLine(x1, y1, x2, y2) {
 }
 
 d3.timer(function (elapsed) {
- if (rerender)
-    ctx.clear(ctx.COLOR_BUFFER_BIT),
-    rerender = scene.forEach(drawPath)
-
   ctx.uniform1f(program.time, pathgl.time = elapsed)
+  scene.forEach(drawPath)
 })
 
 function drawPath(node) {
@@ -27,7 +24,6 @@ function drawPath(node) {
   var path = node.path
 
   for (var i = 0; i < path.length; i++) {
-
     ctx.bindBuffer(ctx.ARRAY_BUFFER, path[i])
     ctx.vertexAttribPointer(program.vertexPositionLoc, path[i].itemSize, ctx.FLOAT, false, 0, 0)
     ctx.drawArrays(ctx.LINE_STRIP, 0, path[i].numItems)
@@ -39,7 +35,7 @@ function render() {
 }
 
 function setStroke (c){
-  ctx.uniform4f(rgb,
+  ctx.uniform4f(program.rgb,
                 c.r / 256,
                 c.g / 256,
                 c.b / 256,

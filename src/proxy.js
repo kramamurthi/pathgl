@@ -25,6 +25,7 @@ svgDomProxy.prototype =
         addToBuffer(this)
         this.path.coords = circlePoints(this.attr.r)
         this.buffer = buildBuffer(this.path.coords)
+        drawPolygon.call(this, this.buffer)
       }
     , cx: function (cx) {
         this.buffer && drawPolygon.call(this, this.buffer)

@@ -5,8 +5,6 @@ function init(canvas) {
   return ctx
 }
 
-
-
 function override(canvas) {
   return extend(canvas,
                 { appendChild: svgDomProxy
@@ -31,28 +29,33 @@ function initShaders() {
   program = ctx.createProgram()
   ctx.attachShader(program, vertexShader)
   ctx.attachShader(program, fragmentShader)
-  ctx.linkProgram(program)
 
-  rgb = ctx.getUniformLocation(program, 'rgb')
+  ctx.linkProgram(program)
+  ctx.useProgram(program)
 
   if (! ctx.getProgramParameter(program, ctx.LINK_STATUS)) return console.error("Shader is broken")
 
-  ctx.useProgram(program)
+  var shaderParameters = {
+      rgb: [0,0,0, 0]
+    //, uPmatrix: pmatrix
+    , xyz: [0,0,0]
+    , time: [0]
+    , resolution: [innerWidth, innerHeight]
+  }
+
+  each(shaderParameters, bindUniform)
 
   program.vertexPositionLoc = ctx.getAttribLocation(program, "aVertexPosition")
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
   ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
+ }
 
-  program.xyz = ctx.getUniformLocation(program, "xyz")
-  ctx.uniform3fv(program.xyz, [0, 0, 0])
-
-  program.time = ctx.getUniformLocation(program, "time")
-  ctx.uniform1f(program.time, 0)
-
-  program.resolution = ctx.getUniformLocation(program, "resolution")
-  ctx.uniform2fv(program.resolution, [innerWidth, innerHeight])
+function bindUniform(val, key) {
+  program[key] = ctx.getUniformLocation(program, key)
+  console.log(key, val.length)
+  if (val) ctx['uniform' + val.length  +  'fv'](program[key], val)
 }
 
 function initContext(canvas) {
@@ -61,4 +64,9 @@ function initContext(canvas) {
   if (! ctx) return
   ctx.viewportWidth = canvas.width
   ctx.viewportHeight = canvas.height
+}
+
+
+function each(obj, fn) {
+  for(var key in obj) fn(obj[key], key, obj)
 }
