@@ -47,6 +47,12 @@ function initShaders() {
 
   program.xyz = ctx.getUniformLocation(program, "xyz")
   ctx.uniform3fv(program.xyz, [0, 0, 0])
+
+  program.time = ctx.getUniformLocation(program, "time")
+  ctx.uniform1f(program.time, 0)
+
+  program.resolution = ctx.getUniformLocation(program, "resolution")
+  ctx.uniform2fv(program.resolution, [innerWidth, innerHeight])
 }
 
 function initContext(canvas) {
