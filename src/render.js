@@ -14,11 +14,14 @@ function addLine(x1, y1, x2, y2) {
 }
 
 d3.timer(function (elapsed) {
-  ctx.uniform1f(program.time, pathgl.time = elapsed)
+  if (rerender || pathgl.forceRerender)
+  ctx.uniform1f(program.time, pathgl.time = elapsed / 1000)
   scene.forEach(drawPath)
 })
 
 function drawPath(node) {
+  return node.buffer && drawPolygon.call(node, node.buffer)
+
   setStroke(d3.rgb(node.attr.stroke))
 
   var path = node.path

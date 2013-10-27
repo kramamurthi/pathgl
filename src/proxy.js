@@ -98,7 +98,7 @@ function buildBuffer(points){
 }
 
 function drawPolygon(buffer) {
-  setStroke(d3.rgb(this.attr.fill))
+  if (! this.attr) return
   ctx.uniform3f(program.xyz, this.attr.cx || 0, this.attr.cy || 0, 0)
 
   //points = flatten(points)
@@ -119,7 +119,7 @@ var flatten = function(input) {
 
 function circlePoints(r) {
   var a = []
-  for (var i = 0; i < 360; i+=50)
+  for (var i = 0; i < 360; i+=25)
     a.push(50 + r * Math.cos(i * Math.PI / 180),
            50 + r * Math.sin(i * Math.PI / 180),
            0

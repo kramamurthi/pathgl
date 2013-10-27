@@ -1,3 +1,5 @@
+pathgl.initShaders = initShaders
+
 function init(canvas) {
   initContext(canvas)
   initShaders(ctx)
@@ -40,7 +42,7 @@ function initShaders() {
     //, uPmatrix: pmatrix
     , xyz: [0,0,0]
     , time: [0]
-    , resolution: [innerWidth, innerHeight]
+    , resolution: [ innerWidth, innerHeight ]
   }
 
   each(shaderParameters, bindUniform)
@@ -62,8 +64,8 @@ function initContext(canvas) {
   canv = canvas
   ctx = canvas.getContext('webgl')
   if (! ctx) return
-  ctx.viewportWidth = canvas.width
-  ctx.viewportHeight = canvas.height
+  ctx.viewportWidth = canvas.width || innerWidth
+  ctx.viewportHeight = canvas.height || innerHeight
 }
 
 
@@ -245,7 +247,7 @@ function buildBuffer(points){
 }
 
 function drawPolygon(buffer) {
-  setStroke(d3.rgb(this.attr.fill))
+  if (! this.attr) return
   ctx.uniform3f(program.xyz, this.attr.cx || 0, this.attr.cy || 0, 0)
 
   //points = flatten(points)
@@ -266,7 +268,7 @@ var flatten = function(input) {
 
 function circlePoints(r) {
   var a = []
-  for (var i = 0; i < 360; i+=50)
+  for (var i = 0; i < 360; i+=25)
     a.push(50 + r * Math.cos(i * Math.PI / 180),
            50 + r * Math.sin(i * Math.PI / 180),
            0
@@ -289,11 +291,14 @@ function addLine(x1, y1, x2, y2) {
 }
 
 d3.timer(function (elapsed) {
-  ctx.uniform1f(program.time, pathgl.time = elapsed)
+  if (rerender || pathgl.forceRerender)
+  ctx.uniform1f(program.time, pathgl.time = elapsed / 1000)
   scene.forEach(drawPath)
 })
 
 function drawPath(node) {
+  return node.buffer && drawPolygon.call(node, node.buffer)
+
   setStroke(d3.rgb(node.attr.stroke))
 
   var path = node.path
@@ -338,8 +343,6 @@ pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "  gl_Position = uPMatrix * vec4(xyz + aVertexPosition, 1.0);"
                 , "}"
                 ].join('\n')
-
-
 pathgl.fragment = [
   "precision mediump float;"
 , "uniform float time;"

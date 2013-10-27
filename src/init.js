@@ -1,3 +1,5 @@
+pathgl.initShaders = initShaders
+
 function init(canvas) {
   initContext(canvas)
   initShaders(ctx)
@@ -40,7 +42,7 @@ function initShaders() {
     //, uPmatrix: pmatrix
     , xyz: [0,0,0]
     , time: [0]
-    , resolution: [innerWidth, innerHeight]
+    , resolution: [ innerWidth, innerHeight ]
   }
 
   each(shaderParameters, bindUniform)
@@ -62,8 +64,8 @@ function initContext(canvas) {
   canv = canvas
   ctx = canvas.getContext('webgl')
   if (! ctx) return
-  ctx.viewportWidth = canvas.width
-  ctx.viewportHeight = canvas.height
+  ctx.viewportWidth = canvas.width || innerWidth
+  ctx.viewportHeight = canvas.height || innerHeight
 }
 
 

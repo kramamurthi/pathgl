@@ -20,8 +20,6 @@ pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "  gl_Position = uPMatrix * vec4(xyz + aVertexPosition, 1.0);"
                 , "}"
                 ].join('\n')
-
-
 pathgl.fragment = [
   "precision mediump float;"
 , "uniform float time;"
