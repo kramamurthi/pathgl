@@ -43,6 +43,7 @@ function initShaders() {
     , xyz: [0,0,0]
     , time: [0]
     , resolution: [ innerWidth, innerHeight ]
+    , mouse: [0, 0]
   }
 
   each(shaderParameters, bindUniform)
@@ -56,16 +57,15 @@ function initShaders() {
 
 function bindUniform(val, key) {
   program[key] = ctx.getUniformLocation(program, key)
-  console.log(key, val.length)
   if (val) ctx['uniform' + val.length  +  'fv'](program[key], val)
 }
 
 function initContext(canvas) {
-  canv = canvas
   ctx = canvas.getContext('webgl')
   if (! ctx) return
   ctx.viewportWidth = canvas.width || innerWidth
   ctx.viewportHeight = canvas.height || innerHeight
+  d3.select(canvas).on('mousemove', function () { mouse = d3.mouse(this) })
 }
 
 

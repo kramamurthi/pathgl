@@ -1,16 +1,17 @@
 var w = innerWidth
   , h = innerHeight
+  , current_shader
 
 pathgl.forceRerender = true
 
 pathgl.fragment = d3.select('#hello').text()
 
-
 d3.selectAll('[id]').each(function () {
-  var shader = this.textContent
-  console.log(this.id)
-  d3.select('body').append('div').text(this.id).on('click', function () {
-    console.log(shader.length)
+  var shader = this.textContent, name = this.id
+  d3.select('body').append('div').attr('class', 'select').text(name).on('click', function () {
+    current_shader = name
+    pathgl.fragment = shader
+    pathgl.initShaders()
   })
 })
 
@@ -31,7 +32,20 @@ var c = d3.select(pathgl('canvas'))
 function random_color() { return '#' + Math.floor(Math.random() * 0xffffff).toString(16) }
 
 d3.select('canvas').on('click', function () {
+  random_shader()
+
   c.transition().duration(1000)
   .attr('cx', function (){ return Math.random() * innerWidth})
   .attr('cy', function (){ return Math.random() * innerHeight})
 })
+
+
+function random_shader () {
+  var selection = d3.selectAll('.select')
+    , index = ~~ (Math.random() * (selection.size()))
+    , handler = selection[0][index]
+  console.log(index)
+  return handler.textContent == current_shader ?
+    random_shader() :
+    handler.__onclick()
+}

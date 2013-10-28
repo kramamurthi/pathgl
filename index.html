@@ -14,35 +14,1369 @@
 
   <script src="lib/d3.js"></script>
   <script src="dist/pathgl.js"></script>
-  <script src="test.js"></script>
   <style>
     body {
-      padding: 15px;
+    padding: 15px;
     }
 
     svg {
-     border: 1px solid #ddd;
+    border: 1px solid #ddd;
+    }
+
+    [id] {
+      display:none;
     }
   </style>
 
 </head>
-<body class="row">
-  <div class="col-md-6">
-    <p>
-      Pathgl is a library which lets you render d3 code to a webgl context with no
-      changes to your code
-    </p>
-    <ul class="nav nav-tabs nav-justified">
-      <li class="active"><a href="#code" data-toggle="tab">code</a></li>
-      <li><a href="#svg" data-toggle="tab">svg</a></li>
-    </ul>
 
-    <div class="tab-content">
-      <div class="tab-pane active" id="code">
-        <pre class="code"><code data-language="javascript" contenteditable="true"></code></pre>
+<body>
+
+ <div id="water">
+
+#ifdef GL_ES
+      precision mediump float;
+#endif
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+uniform sampler2D backbuffer;
+#define pi 3.141592653589793238462643383279
+#define pi_inv 0.318309886183790671537767526745
+#define pi2_inv 0.159154943091895335768883763372
+
+/// bipolar complex by @Flexi23
+/// "logarithmic zoom with a spiral twist and a division by zero in the complex number plane." (from https://www.shadertoy.com/view/4ss3DB)
+
+vec2 complex_mul(vec2 factorA, vec2 factorB){
+  return vec2( factorA.x*factorB.x - factorA.y*factorB.y, factorA.x*factorB.y + factorA.y*factorB.x);
+}
+
+vec2 complex_div(vec2 numerator, vec2 denominator){
+  return vec2( numerator.x*denominator.x + numerator.y*denominator.y,
+               numerator.y*denominator.x - numerator.x*denominator.y)/
+    vec2(denominator.x*denominator.x + denominator.y*denominator.y);
+}
+
+vec2 wrap_flip(vec2 uv){
+  return vec2(1.)-abs(fract(uv*.5)*2.-1.);
+}
+ 
+float border(vec2 domain, float thickness){
+  vec2 uv = fract(domain-vec2(0.5));
+  uv = min(uv,1.-uv)*2.;
+  return clamp(max(uv.x,uv.y)-1.+thickness,0.,1.)/(thickness);
+}
+
+float circle(vec2 uv, vec2 aspect, float scale){
+  return clamp( 1. - length((uv-0.5)*aspect*scale), 0., 1.);
+}
+
+float sigmoid(float x) {
+  return 2./(1. + exp2(-x)) - 1.;
+}
+
+float smoothcircle(vec2 uv, vec2 center, vec2 aspect, float radius, float sharpness){
+  return 0.5 - sigmoid( ( length( (uv - center) * aspect) - radius) * sharpness) * 0.5;
+}
+
+float lum(vec3 color){
+  return dot(vec3(0.30, 0.59, 0.11), color);
+}
+
+vec2 spiralzoom(vec2 domain, vec2 center, float n, float spiral_factor, float zoom_factor, vec2 pos){
+  vec2 uv = domain - center;
+  float angle = atan(uv.y, uv.x);
+  float d = length(uv);
+  return vec2( angle*n*pi2_inv + log(d)*spiral_factor*0., -log(d)*zoom_factor + 0.*n*angle*pi2_inv) + pos;
+}
+
+vec2 mobius(vec2 domain, vec2 zero_pos, vec2 asymptote_pos){
+  return complex_div( domain - zero_pos, domain - asymptote_pos);
+}
+
+/// basically just a lookup from a texture with GL_LINEAR (instead of the active GL_NEAREST method for the backbuffer) resembled in shader code - surely not very efficient, but hey it looks much better and works on Float32 textures too!
+vec4 bilinear(sampler2D sampler, vec2 uv, vec2 resolution){
+  vec2 pixelsize = 1./resolution;
+  vec2 pixel = uv * resolution;
+  vec2 d = pixel - floor(pixel) + 0.5;
+  pixel = (pixel - d)*pixelsize;
+
+  vec2 h = vec2( pixel.x, pixel.x + pixelsize.x);
+  if(d.x < 0.5)
+    h = vec2( pixel.x, pixel.x - pixelsize.x);
+
+  vec2 v = vec2( pixel.y, pixel.y + pixelsize.y);
+  if(d.y < 0.5)
+    v = vec2( pixel.y, pixel.y - pixelsize.y);
+
+  vec4 lowerleft = texture2D(sampler, vec2(h.x, v.x));
+  vec4 upperleft = texture2D(sampler, vec2(h.x, v.y));
+  vec4 lowerright = texture2D(sampler, vec2(h.y, v.x));
+  vec4 upperright = texture2D(sampler, vec2(h.y, v.y));
+
+  d = abs(d - 0.5);
+
+  return mix( mix( lowerleft, lowerright, d.x), mix( upperleft, upperright, d.x),d.y);
+}
+
+void main(void)
+{
+  // domain map
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+
+  // aspect-ratio correction
+  vec2 aspect = vec2(1.,resolution.y/resolution.x);
+  vec2 uv_correct = 0.5 + (uv -0.5)/ aspect.yx;
+  vec2 mouse_correct = 0.5 + ( mouse.xy / resolution.xy - 0.5) / aspect.yx;
+
+  float phase = time*0. + pi*1.;
+  float dist = 0.68;
+  vec2 uv_bipolar = mobius(uv_correct, vec2(0.5 - dist*0.5, 0.5), vec2(0.5 + dist*0.5, 0.5));
+  uv_bipolar = spiralzoom(uv_bipolar, vec2(0.), 10., 0.5, 1.0, mouse.yx*vec2(-1.,1.)*10.);
+  //uv_bipolar = vec2(-uv_bipolar.y,uv_bipolar.x); // rotation 
+  
+  vec2 uv_trace = wrap_flip(uv_bipolar);
+
+
+  vec2 uPos = uv_trace;
+  //suPos -= vec2((resolution.x/resolution.y)/2.0, 0.0);//shift origin to center
+  
+  uPos.x -= 0.5;
+  uPos.y -= 0.5;
+  
+  vec3 color = vec3(0.0);
+  float vertColor = 0.0;
+  for( float i = 0.0; i < 10.0; ++i )
+    {
+      float t = time * (2.5);
+      
+      uPos.y += sin( uPos.x*(i+1.0) + t+i/5.0 ) * 0.1;
+      float fTemp = abs(1.0 / uPos.y / 990.0);
+      vertColor += fTemp;
+      color += vec3( fTemp*(11.0-i)/2.0, fTemp*i/14.0, pow(fTemp,0.99)*4.5 );
+    }
+  
+  float foo = 0.86;
+  float bar = 4./256.;
+  float baz = 1.1;
+  float w = -pi/12.;
+  vec2 rot = vec2( cos(w), sin(w));
+  vec2 drop = 0.5 + complex_mul((uv - 0.5)*aspect, rot)*baz/aspect;
+  
+  vec4 dbuff =  bilinear(backbuffer,drop, resolution)*foo - bar;
+ 
+  gl_FragColor = mix(color.xyzz, vec4(1),  dbuff * (1. - border(clamp(drop, 0., 1.), 0.25)));
+  gl_FragColor.w = 1.;
+}
       </div>
-      <div class="tab-pane" id="svg"><svg></div>
-    </div>
-  </div>
-  <canvas data-toggle="tooltip" title="this is webgl!"></canvas>
+ <div id="innerspeaker">
+#ifdef GL_ES
+precision highp float;
+#endif
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+uniform sampler2D backbuffer;
+#define pi 3.141592653589793238462643383279
+#define pi_inv 0.318309886183790671537767526745
+#define pi2_inv 0.159154943091895335768883763372
+
+/// bipolar complex by @Flexi23
+/// "logarithmic zoom with a spiral twist and a division by zero in the complex number plane." (from https://www.shadertoy.com/view/4ss3DB)
+
+vec2 complex_mul(vec2 factorA, vec2 factorB){
+  return vec2( factorA.x*factorB.x - factorA.y*factorB.y, factorA.x*factorB.y + factorA.y*factorB.x);
+}
+
+vec2 complex_div(vec2 numerator, vec2 denominator){
+  return vec2( numerator.x*denominator.x + numerator.y*denominator.y,
+               numerator.y*denominator.x - numerator.x*denominator.y)/
+    vec2(denominator.x*denominator.x + denominator.y*denominator.y);
+}
+
+vec2 wrap_flip(vec2 uv){
+  return vec2(1.)-abs(fract(uv*.5)*1.-1.);
+}
+ 
+float border(vec2 domain, float thickness){
+  vec2 uv = fract(domain-vec2(0.5));
+  uv = min(uv,1.-uv)*2.;
+  return clamp(max(uv.x,uv.y)-1.+thickness,0.,1.)/(thickness);
+}
+
+float circle(vec2 uv, vec2 aspect, float scale){
+  return clamp( 2. - length((uv-0.5)*aspect*scale), 0., 1.);
+}
+
+float sigmoid(float x) {
+  return 2./(2. + exp2(-x)) - 1.;
+}
+
+float smoothcircle(vec2 uv, vec2 center, vec2 aspect, float radius, float sharpness){
+  return 0.5 - sigmoid( ( length( (uv - center) * aspect) - radius) * sharpness) * 0.5;
+}
+
+float lum(vec3 color){
+  return dot(vec3(0.30, 0.59, 0.11), color);
+}
+
+vec2 spiralzoom(vec2 domain, vec2 center, float n, float spiral_factor, float zoom_factor, vec2 pos){
+  vec2 uv = domain - center;
+  float angle = atan(uv.y, uv.x);
+  float d = length(uv);
+  return vec2( angle*n*pi2_inv + log(d)*spiral_factor*0., -log(d)*zoom_factor + 0.*n*angle*pi2_inv) + pos;
+}
+
+vec2 mobius(vec2 domain, vec2 zero_pos, vec2 asymptote_pos){
+  return complex_div( domain - zero_pos, domain - asymptote_pos);
+}
+
+const float Pi = 3.14159;
+const int zoom = 20;
+const float speed = 0.05;
+float fScale = 1.0;
+
+void main(void)
+{
+  // domain map
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+
+  // aspect-ratio correction
+  vec2 aspect = vec2(1.,resolution.y/resolution.x);
+  vec2 uv_correct = 0.5 + (uv -0.5)/ aspect.yx;
+  vec2 mouse_correct = 0.5 + ( mouse.xy / resolution.xy - 0.5) / aspect.yx;
+
+  float phase = time*0. + pi*2.;
+  float dist = 1.;
+  vec2 uv_bipolar = mobius(uv_correct, vec2(0.5 - dist*0.5, 0.5), vec2(0.5 + dist*0.5, 0.5));
+  uv_bipolar = spiralzoom(uv_bipolar, vec2(0.), 8., 0., 0.9, mouse.yx*vec2(-1.,2.)*4. );
+  uv_bipolar = vec2(-uv_bipolar.y,uv_bipolar.x); // rotation 
+  
+  
+  vec2 pos = 0.5 + (wrap_flip(uv_bipolar) - 0.5)*8.;
+  float amnt = 0.5;
+  float nd = 0.0;
+  vec4 cbuff = vec4(0.0);
+
+  for(float i=0.0; i < 8.0; i += 2.0)
+    {
+      nd =cos(3.14159 * i * pos.x + (i * 2.75 + cos(time) * 0.25) + time) * (pos.x - 0.5) + 0.5;
+      amnt = 1.0 / abs(nd - pos.y) * 0.005; 
+      
+      cbuff += vec4(amnt, amnt * 0.2 , amnt * pos.y, 2.0)*4.;
+    }
+  
+  for(float i=0.0; i<5.0;i++){
+    nd =sin(3.14*0.8*pos.x + (i*0.2+sin(+time)*.8) + time)*0.4+0.1 + pos.x;
+    amnt = 1.0/abs(nd-pos.y)*0.02; 
+    
+    cbuff += vec4(amnt, amnt*0.3 , amnt*pos.y, 081.0);
+  }
+  
+  gl_FragColor=vec4(cbuff.rgb, 1.0);
+}
+
+</div> 
+ <div id="crosshatch">
+precision mediump float;
+
+uniform float time;
+uniform vec2 resolution;
+
+// Tartan Colors for the @trafopop LED-Jackets by @hintz 2013-09-23
+// http://www.trafopop.com
+
+float M_PI =  acos(0.0)*2.0;
+
+void main(void)
+{
+  vec2 position = gl_FragCoord.xy / resolution.x - 0.5;
+
+  if (mod(gl_FragCoord.x,2.0)>0.5)
+    {
+      position.y = 1.0 - position.y; 
+    }
+  if (mod(gl_FragCoord.y,2.0)>0.5)
+    {
+      position.x = 1.0 - position.x; 
+    }
+
+  float s = 0.01 * (0.7 + 0.2 * sin(time * 0.0827));
+  float r = 2.0 * M_PI * sin(time * 0.0742);
+
+  float sinr = sin(r*1.001);
+  float cosr = cos(r);
+
+  float t = time * 0.000002;
+  vec2 center1 = vec2(cos(t), cos(t*0.535));
+
+  float x0 = s * position.x;
+  float y0 = s * position.y;
+  float x = (x0*cosr - y0*sinr);
+  float y = (x0*sinr + y0*cosr);
+
+  float size = 1000.0;
+  float d = distance(vec2(x,y), center1)*size;
+  vec2 color = vec2(cos(d+t),sin(d));
+  
+  vec2 ncolor = normalize(color);
+
+  float red = ncolor.x*ncolor.x;
+  float green = ncolor.x*ncolor.y;
+  float blue = ncolor.x-ncolor.y;
+  
+  gl_FragColor = vec4(mod(red,1.0), mod(green,1.0), mod(blue,1.0), 1.0);
+ }
+</div>
+<div id="stone">
+// Procedural Tiles // Based on http://www.iquilezles.org/www/articles/smoothvoronoi/smoothvoronoi.htm
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+// Expensive Noise
+
+vec4 textureRND2D(vec2 uv){
+  uv = floor(fract(uv)*1e3);
+  float v = uv.x+uv.y*1e3;
+  return fract(1e5*sin(vec4(v*1e-2, (v+200.)*1e-2, (v+1e3)*1e-2, (v+1e3+1.)*1e-2)));
+}
+
+float noise(vec2 p) {
+  vec2 f = fract(p*1e3);
+  vec4 r = textureRND2D(p);
+  f = f*f*(3.0-2.60*f);
+  return (mix(mix(r.x, r.y, f.x), mix(r.z, r.w, f.x), f.y));
+}
+
+vec2 random2f( vec2 seed ) {
+#define rnd_seed 1.337
+  float rnd1 = mod(noise(seed*rnd_seed), 1.0);
+  float rnd2 = mod(rnd1*1.0,1.0);
+
+  return vec2(rnd1, rnd2);
+}
+
+// Cheap Noise
+
+float rand(vec2 co){
+  return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+}
+
+vec2 rand2(vec2 co){
+  float rnd1 = rand(co);
+  float rnd2 = rand(co*rnd1);
+  return vec2(rnd1,rnd2);
+}
+
+
+// Methods
+
+vec3 tile_color = vec3(0.80,0.8,0.17);
+
+#define tile_height 0.0735
+float voronoi( in vec2 x ) {
+  vec2 p = floor( x );
+  vec2 f = fract( x );
+
+  vec3 res = vec3(1.0);
+
+  for( int j=-1; j<=1; j++ ) for( int i=-1; i<=1; i++ ) {
+      vec2 b = vec2( i, j );
+      vec2 r = vec2( b ) + rand2( p + b ) - f; // cheap
+      //vec2 r = vec2( b ) + random2f( p + b ) - f; // expensive but has some nicer properties for morphing
+      float d = dot( r , r );
+    
+      if ( d < res.x ) {
+        res.xyz = vec3(d,res.xy);
+        if (rand(p+b) < 0.5) tile_color = vec3(.57,.57,.69);
+        else tile_color = vec3(0.9,0.9,0.9);
+      } else if (d < res.y) {
+        res.yz = vec2(d,res.y);
+      }
+    }
+
+  return clamp(sqrt(res.y) - sqrt(res.x),0.0,tile_height);
+}
+
+vec3 normal(vec2 p) {
+  float d = 0.001;
+  float d2 = 0.08; // Smoothing parameter for normal
+  vec3 dx = vec3(d2, 0.0, voronoi(p + vec2(d2, 0.0))) - vec3(-d, 0.0, voronoi(p + vec2(-d, 0.0)));
+  vec3 dy = vec3(0.0, d2, voronoi(p + vec2(0.0, d2))) - vec3(0.0, -d, voronoi(p + vec2(0.0, -d)));
+  return normalize(cross(dx,dy));
+}
+
+void main( void ) {
+
+  vec2 p = vec2(2.5*sin(time),-2.5*cos(time)) + (13.*gl_FragCoord.xy)/resolution.y - mouse * vec2(40.0,30.0);
+
+  float color = voronoi(p);
+
+  float light_intensity = 0.95/tile_height;
+  vec3 light = normalize(vec3(1.0,0.1,1.0)) * light_intensity;
+
+  float shade = dot(light,normal(p))+0.5;
+  gl_FragColor = vec4(vec3(shade*color) * tile_color, 1.0);
+}
+
+</div>
+<div id="beam">
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+#define M_PI 3.1415926535897932384626433832795
+#define R 4.0
+#define RM 7.0
+#define G 6.0
+#define GM 7.0
+#define B 6.0
+#define BM 7.0
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+void main( void ) {
+
+  // This is a reimplementation of this thing:
+  // http://mainisusuallyafunction.blogspot.no/2011/10/quasicrystals-as-sums-of-waves-in-plane.html
+
+  vec2 position = ( gl_FragCoord.xy ) / 2.0 + mouse * resolution*0.3;
+
+  float r = 0.0;
+  float g = 0.0;
+  float b = 0.0;
+
+  for (float i = 0.0; i < R; ++i) {
+    float a = i * (2.0 * M_PI / RM);
+    r += cos( (position.x * cos(a) + position.y * sin(a)) + time ) / 4.0 + 0.5;
+  }
+  float m = mod(r, 2.0);
+  if (m >= 1.0) r = 2.0 - m;
+  else r = m;
+
+  for (float i = 0.0; i < G; ++i) {
+    float a = i * (2.0 * M_PI / GM);
+    g += cos( (position.x * cos(a) + position.y * sin(a)) + time ) / 4.0 + 0.5;
+  }
+  m = mod(g, 2.0);
+  if (m >= 1.0) g = 2.0 - m;
+  else g = m;
+
+  for (float i = 0.0; i < B; ++i) {
+    float a = i * (2.0 * M_PI / BM);
+    b += cos( (position.x * cos(a) + position.y * sin(a)) + time ) / 3.0 + 0.5;
+  }
+  m = mod(b, 2.0);
+  if (m >= 1.0) b = 2.0 - m;
+  else b = m;
+
+  gl_FragColor = vec4(r, g, b, 1.0 );
+
+}
+
+</div>
+<div id="voronoi">
+//Very funky shader ripped from Shadertoy.com (only the voronoi pattern part).
+//Originally written by srtuss. Modified by Vlad.
+
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+const float fog_density = 1.05;
+
+vec2 rand22(in vec2 p)
+{
+  return fract(vec2(sin(p.x * 591.32 + p.y * 154.077), cos(p.x * 391.32 + p.y * 49.077)));
+}
+float rand12(vec2 p)
+{
+  return fract(sin(dot(p.xy, vec2(12.9898, 78.233))) * 43758.5357);
+}
+vec2 rand21(float p)
+{
+  return fract(vec2(sin(p * 591.32), cos(p * 391.32)));
+}
+vec3 voronoi(in vec2 x)
+{
+  vec2 n = floor(x); // grid cell id
+  vec2 f = fract(x); // grid internal position
+  vec2 mg; // shortest distance...
+  vec2 mr; // ..and second shortest distance
+  float md = 8.0, md2 = 8.0;
+
+  for(int j = -1; j <= 1; j ++)
+    {
+      for(int i = -1; i <= 1; i ++)
+        {
+          vec2 g = vec2(float(i), float(j)); // cell id
+          vec2 o = rand22(n + g); // offset to edge point
+          vec2 r = g + o - f;
+        
+          float d = max(abs(r.x), abs(r.y)); // distance to the edge
+        
+          if(d < md)
+            {md2 = md; md = d; mr = r; mg = g;}
+          else if(d < md2)
+            {md2 = d;}
+        }
+    }
+  return vec3(n + mg, md2 - md);
+}
+
+#define A2V(a) vec2(sin((a) * 6.28318531 / 100.0), cos((a) * 6.28318531 / 100.0))
+
+vec2 rotate(vec2 p, float a)
+{
+  return vec2(p.x * cos(a) - p.y * sin(a), p.x * sin(a) + p.y * cos(a));
+}
+
+vec3 intersect(in vec3 o, in vec3 d, vec3 c, vec3 u, vec3 v)
+{
+  vec3 q = o - c;
+  return vec3(
+              dot(cross(u, v), q),
+              dot(cross(q, u), d),
+              dot(cross(v, q), d)) / dot(cross(v, u), d);
+}
+
+void main( void ) 
+{
+  vec2 uv = gl_FragCoord.xy / resolution.xy;
+  uv = uv * 2.0 - 1.0;
+  uv.x *= resolution.x / resolution.y;
+
+
+  // ray origin
+  vec3 ro = vec3(10, 10.0, time * 0.0);
+  ro.y = 0.0;
+  // camera look at
+  vec3 ta = vec3(10.0, 512.0, 5.0);
+
+  vec3 ww = normalize(ro - ta);
+  vec3 uu = normalize(cross(ww, normalize(vec3(0.0, 1.0, 0.0))));
+  vec3 vv = normalize(cross(uu, ww));
+  // obtain ray direction
+  vec3 rd = normalize(uv.x * uu + uv.y * vv + 1.0 * ww);
+
+  vec3 its;
+  float v, g;
+  vec3 inten = vec3(0.0);
+
+  // voronoi floor layers
+  for(int i = 0; i < 16; i ++)
+    {
+      float layer = float(i);
+      its = intersect(ro, rd, vec3(0.0, -5.0 - layer * 5.0, 0.0), vec3(1.0, 0.0, 0.0), vec3(0.0, 0.0, 1.0));
+      if(its.x > 0.0)
+        {
+          vec3 vo = voronoi((its.yz + time*2.0) * 0.05 + 8.0 * rand21(float(i)));
+          v = exp(-100.0 * (vo.z - 0.02));
+        
+          float fx = 0.0;
+        
+          // add some special fx to lowest layer
+          if(i == 6)
+            {
+              float crd = 0.0;//fract(time * 0.2) * 50.0 - 25.0;
+              float fxi = cos(vo.x * 0.2 + time * 1.5);//abs(crd - vo.x);
+              fx = clamp(smoothstep(0.9, 1.0, fxi), 0.0, 0.9) * 1.0 * rand12(vo.xy);
+              fx *= exp(-3.0 * vo.z) * 2.0;
+            }
+          if (mod(float(i),3.0) < 1.0)
+            inten.r += v * 0.1 + fx;
+          else if (mod(float(i),3.0) < 2.0)
+            inten.g += v * 0.1 + fx;
+          else if (mod(float(i),3.0) < 3.0)
+            inten.b += v * 0.1 + fx;
+        }
+    }
+
+  vec3 col = pow(vec3(inten.r, (inten.g * 0.5), inten.b), 0.5 * vec3(cos(time*5.0)/6.0+0.33)); //pow(base color, glow amount)
+
+  gl_FragColor = vec4(col, 1.0);
+}
+
+
+
+</div>
+
+<div id="roots">
+#ifdef GL_ES
+precision mediump float;
+#endif
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+
+const float pi = 3.14159;
+
+vec3 rotate(vec3 v,vec2 r) 
+{
+  mat3 rxmat = mat3(1,   0    ,    0    ,
+                    0,cos(r.y),-sin(r.y),
+                    0,sin(r.y), cos(r.y));
+  mat3 rymat = mat3(cos(r.x), 0,-sin(r.x),
+                    0    , 1,    0    ,
+                    sin(r.x), 0,cos(r.x));
+
+
+  return v*rxmat*rymat;
+
+}
+
+float snoise(vec3 v);
+
+void main( void ) {
+
+  vec2 res = vec2(resolution.x/resolution.y,1.0);
+  vec2 p = ( gl_FragCoord.xy / resolution.y ) -(res/2.0);
+
+
+  float dist = 0.0;
+
+  vec3 color = vec3(0.0);
+
+  for(float i = 1.;i <= 4.;i++)
+    {
+    
+      vec2 m = (mouse-0.5)*pi*vec2(2.,1.);
+      vec3 pos = normalize(rotate(vec3(p,0.5),vec2(m) * (0.7 + i/3.0)));
+    
+      float shell = abs(snoise(pos*i+vec3(time,0,0)*0.13));
+    
+      shell = smoothstep(0.25,0.2,shell);
+    
+      dist = max(dist,shell*(1.-(i/8.)));
+    }
+
+  color = mix(vec3(.21,.21,1.8),vec3(.8,0.8,0.2),1.-dist);
+
+  gl_FragColor = vec4(  color.xyz , 1.0 );
+
+}
+
+
+
+//
+// Description : Array and textureless GLSL 2D/3D/4D simplex 
+//               noise functions.
+//      Author : Ian McEwan, Ashima Arts.
+//  Maintainer : ijm
+//     Lastmod : 20110822 (ijm)
+//     License : Copyright (C) 2011 Ashima Arts. All rights reserved.
+//               Distributed under the MIT License. See LICENSE file.
+//               https://github.com/ashima/webgl-noise
+// 
+
+vec3 mod289(vec3 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
+
+vec4 mod289(vec4 x) {
+  return x - floor(x * (1.0 / 289.0)) * 289.0;
+}
+
+vec4 permute(vec4 x) {
+  return mod289(((x*34.0)+1.0)*x);
+}
+
+vec4 taylorInvSqrt(vec4 r)
+{
+  return 1.79284291400159 - 0.85373472095314 * r;
+}
+
+float snoise(vec3 v)
+{ 
+  const vec2  C = vec2(1.0/6.0, 1.0/3.0) ;
+  const vec4  D = vec4(0.0, 0.5, 1.0, 2.0);
+
+  // First corner
+  vec3 i  = floor(v + dot(v, C.yyy) );
+  vec3 x0 =   v - i + dot(i, C.xxx) ;
+
+  // Other corners
+  vec3 g = step(x0.yzx, x0.xyz);
+  vec3 l = 1.0 - g;
+  vec3 i1 = min( g.xyz, l.zxy );
+  vec3 i2 = max( g.xyz, l.zxy );
+
+  //   x0 = x0 - 0.0 + 0.0 * C.xxx;
+  //   x1 = x0 - i1  + 1.0 * C.xxx;
+  //   x2 = x0 - i2  + 2.0 * C.xxx;
+  //   x3 = x0 - 1.0 + 3.0 * C.xxx;
+  vec3 x1 = x0 - i1 + C.xxx;
+  vec3 x2 = x0 - i2 + C.yyy; // 2.0*C.x = 1/3 = C.y
+  vec3 x3 = x0 - D.yyy;      // -1.0+3.0*C.x = -0.5 = -D.y
+
+  // Permutations
+  i = mod289(i); 
+  vec4 p = permute( permute( permute( 
+                                     i.z + vec4(0.0, i1.z, i2.z, 1.0 ))
+                             + i.y + vec4(0.0, i1.y, i2.y, 1.0 )) 
+                    + i.x + vec4(0.0, i1.x, i2.x, 1.0 ));
+
+  // Gradients: 7x7 points over a square, mapped onto an octahedron.
+  // The ring size 17*17 = 289 is close to a multiple of 49 (49*6 = 294)
+  float n_ = 0.142857142857; // 1.0/7.0
+  vec3  ns = n_ * D.wyz - D.xzx;
+
+  vec4 j = p - 49.0 * floor(p * ns.z * ns.z);  //  mod(p,7*7)
+
+  vec4 x_ = floor(j * ns.z);
+  vec4 y_ = floor(j - 7.0 * x_ );    // mod(j,N)
+
+  vec4 x = x_ *ns.x + ns.yyyy;
+  vec4 y = y_ *ns.x + ns.yyyy;
+  vec4 h = 1.0 - abs(x) - abs(y);
+
+  vec4 b0 = vec4( x.xy, y.xy );
+  vec4 b1 = vec4( x.zw, y.zw );
+
+  //vec4 s0 = vec4(lessThan(b0,0.0))*2.0 - 1.0;
+  //vec4 s1 = vec4(lessThan(b1,0.0))*2.0 - 1.0;
+  vec4 s0 = floor(b0)*2.0 + 1.0;
+  vec4 s1 = floor(b1)*2.0 + 1.0;
+  vec4 sh = -step(h, vec4(0.0));
+
+  vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy ;
+  vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww ;
+
+  vec3 p0 = vec3(a0.xy,h.x);
+  vec3 p1 = vec3(a0.zw,h.y);
+  vec3 p2 = vec3(a1.xy,h.z);
+  vec3 p3 = vec3(a1.zw,h.w);
+
+  //Normalise gradients
+  vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+  p0 *= norm.x;
+  p1 *= norm.y;
+  p2 *= norm.z;
+  p3 *= norm.w;
+
+  // Mix final noise value
+  vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+  m = m * m;
+  return 42.0 * dot( m*m, vec4( dot(p0,x0), dot(p1,x1), 
+                                dot(p2,x2), dot(p3,x3) ) );
+}
+
+</div>
+
+
+
+  <div id="static">
+precision mediump float;
+
+#define PI 3.14159265359
+
+uniform float time;
+uniform vec2 mouse;
+uniform vec2 resolution;
+    
+
+vec2 iterate( in vec2 p, in vec4 t ) {
+    return p - 0.05*cos(t.xz + p.x*p.y + cos(t.yw+1.5*PI*p.yx)+p.yx*p.yx );
+}
+
+float smthn (float tim, vec2 fcxy) {
+vec2 q = fcxy / resolution.xy / 5.;
+vec2 p = -1.0 + 2.0*q;
+p.x *= resolution.x/resolution.y;
+p *= 1.5;
+
+vec4 t = 0.125*tim*vec4( 1.0, -1.5, 1.2, -1.6 ) + vec4(0.0,2.0,3.0,1.0);
+
+vec2 z = p;
+vec3 s = vec3(0.0);
+for( int i=0; i<5; i++ ) {
+                   z = iterate( z, t );
+                   float d = dot( z , z-p ); 
+                   s.x += 1.0/(0.25+d);
+                   s.y += sin(atan( p.x-z.x, p.y-z.y ));
+                   s.z += exp(-0.2*d );
+                   }
+                   s *= 0.01;
+
+                   vec3 col = 1. - 0.8*cos( vec3(0.8,0.9,0.) + s.z*26.2831 );
+
+                   col *= 205.5 + 0.5*s.y;
+                   col *= s.x;
+                   col *= 0.94+0.06*sin(10.0*length(z));
+                   
+                   vec3 nor = normalize( vec3( normalize(s.x), 0.02, normalize(s.x) )
+                   );
+                   float dif = dot( nor, vec3(0.7,0.1,0.7) );
+                   col -= 0.05*vec3(dif);
+                   return col[0];
+}
+
+void main( void ) {
+                   float res; float ros; float ras;
+                   for (int i = 0; i < 2; i++) {
+                                       res += 1.0 - smthn(time / 2. + float(i)/0.9,
+                   gl_FragCoord.xy) * 0.01;
+                                       ros += smthn(time + float(i)/0.9,
+                   vec2(gl_FragCoord.xy[0], gl_FragCoord.xy[1] + 2.)) * 0.01;
+                                       ras += 0.5 * smthn(time + float(i)/0.9,
+                   vec2(gl_FragCoord.xy[0], gl_FragCoord.xy[1] + 15.)) * 0.01;
+                                       }
+                                       ros += smthn(time + 55.,
+                   vec2(gl_FragCoord.xy[0], gl_FragCoord.xy[1] + 2.)) * 0.01;
+                                       vec3 col = vec3(res, ros, ras);
+                                       gl_FragColor = vec4( col, 1.0 );
+}
+</div>
+
+  <div id="sky">
+precision mediump float;                                                                               
+                                                                                                       
+uniform float time;
+
+float calc(float f, vec2 uPos) {             
+        float ttime = time * 2.0;
+                                                                                
+    uPos.y += sin( ttime + uPos.x * 9.0) * 0.1;
+                          
+    uPos.x += sin( ttime + uPos.y * 10.0) + 0.8;
+                           
+    float value = sin((uPos.x) * 4.0) + sin(uPos.y * 40.0);
+                       
+    return 15.0/sqrt(abs(value))/5.0 * pow(f, 2.);
+                      
+}                                                                                                      
+                                                                                                       
+void main( void ) {
+                     
+    vec2 p = ( gl_FragCoord.xy / 100.0 );
+       
+    p.x = p.x+(4.0/2.0);                                                
+    p.y = p.y+(2.0/2.0);                                                
+    float vertColor = calc(p.y > 0.5 ? (.1 - (p.y - .2)) * .2 : p.y * 2., p) +
+    0.23456;                                  
+    gl_FragColor = vec4(vertColor, vertColor , vertColor ,
+    1.0)*vec4(0.1,0.3,0.5,1.0)+vec4(0.2,0.1,0.2,1.0);     
+} </div>
+
+  <div id="hello">
+    // Insane recursion with multiple effects by Optimus
+    // Guest code by AkumaX (rand function)
+
+    // Version Zoomer
+
+    precision mediump float;
+
+    uniform float time;
+    uniform vec2 mouse;
+    uniform vec2 resolution;
+
+    const float recursion_level = 8.0;
+
+    float rand(vec2 vector)
+    {
+    return fract( 43758.5453 * sin( dot(vector, vec2(12.9898, 78.233) ) ) );
+    }
+
+    float get_bump_height(vec2 position)
+    {
+    return sin((sin(position.x * 32.0) + sin(position.y * 24.0) + sin(position.x * 4.0 +
+    sin(position.y * 8.0 + time))) * 4.0) * 0.5 + 0.5;
+    }
+
+    float get_light(vec2 position)
+    {
+    vec2 tex = mod(position * 4.0, 1.0) - vec2(0.5);
+    return 0.0005 / pow(length(tex), 4.0);
+    }
+
+    void main(void)
+    {
+
+    float scale = cos(time / 8.0) * 8.0 + 8.005;
+    if (scale < 0.025) scale = 0.025;
+
+                vec2 position = vec2((gl_FragCoord.x / resolution.x) - 0.5,
+                (gl_FragCoord.y / resolution.y) - 0.5) * scale + vec2(time, -time) * 16.0;
+
+                //vec2 rotated_position;
+                //rotated_position.x = ((position.x - 0.5) * cos(sin(0.25 * time) * 2.5)
+                //- (position.y - 0.5) * sin(sin(0.25 * time) * 2.5)) * scale;
+                //rotated_position.y = ((position.y - 0.5) * cos(sin(0.25 * time) * 2.5)
+                //+ (position.x - 0.5) * sin(sin(0.25 * time) * 2.5)) * scale;
+                //position = rotated_position;
+
+                vec2 coord = mod(position,1.0);
+                // coordinate of single effect window (0.0 - 1.0)
+                vec2 effect = floor(mod(position,4.0)); // effect number (0-3,0-3)
+                float effect_number = effect.y * 4.0 + effect.x;
+                vec2 effect_group = floor(position) * 7.0; // effect group float id
+                
+                float gradient = 0.0;
+                vec3 color = vec3(0.0);
+                
+                float angle = 0.0;
+                float radius = 0.0;
+                const float pi = 3.141592;
+                float fade = 0.0;
+                
+                float u,v;
+                float z;
+                
+                vec2 centered_coord = coord - vec2(0.5);
+
+                float dist_from_center = length(centered_coord);
+                float angle_from_center = atan(centered_coord.y, centered_coord.x);
+
+                float iii = 0.0;
+                for (float ii=0.0; ii<=recursion_level; ii++)
+                                                        {
+                                                        if (effect_number==15.0)
+                                                        {
+                                                        position *= 4.0;
+
+                                                        coord = mod(position,1.0);
+                                                        effect =
+                                                        floor(mod(position,4.0));
+                                                        effect_number = effect.y * 4.0 +
+                                                        effect.x;
+                                                        effect_group = floor(position) *
+                                                        7.0;
+
+                                                        centered_coord = coord -
+                                                        vec2(0.5);
+                                                        dist_from_center =
+                                                        length(centered_coord);
+                                                        angle_from_center =
+                                                        atan(centered_coord.y,
+                                                        centered_coord.x);
+
+                                                        color = vec3(0.5);
+                                                        } 
+                                                        else if (effect_number==0.0)
+                                                        {
+                                                        // gradient =
+                                                        //mod(sin(coord.x*400.0) *
+                                                        //sin(coord.y * 400.0) * 16.0 *
+                                                        //time, 1.0);
+                                                        gradient = (rand(
+                                                        vec2(sin(coord*400.0))*time));
+                                                        color = vec3(gradient);
+                                                        break;
+                                                        }
+                                                        else if (effect_number==1.0)
+                                                        {
+                                                        color.r = sin(coord.x * 32.0) +
+                                                        sin(coord.y * 24.0) + sin(coord.x
+                                                        * 4.0 + sin(coord.y * 8.0 +
+                                                        time));
+                                                        color.g = sin(coord.x * 16.0) +
+                                                        sin(coord.y * 12.0) + sin(coord.x
+                                                        * 8.0 + sin(coord.y * 16.0 + 2.0
+                                                        * time));
+                                                        color.b = sin(coord.x * 8.0) +
+                                                        sin(coord.y * 48.0) + sin(coord.x
+                                                        * 2.0 + sin(coord.y * 4.0 + 3.0 *
+                                                        time));
+                                                        break;
+                                                        }
+                                                        else if (effect_number==2.0)
+                                                        {
+                                                        radius = dist_from_center +
+                                                        sin(time * 8.0) * 0.1 + 0.1;
+                                                        angle = angle_from_center + time;
+                                                        
+                                                        gradient = 0.5 / radius +
+                                                        sin(angle * 5.0) * 0.3;
+                                                        color = vec3(gradient, gradient /
+                                                        2.0, gradient / 3.0);
+                                                        break;
+                                                        }
+                                                        else if (effect_number==3.0)
+                                                        {
+                                                        radius = dist_from_center;
+                                                        angle = angle_from_center + time;
+                                                        
+                                                        gradient = sin(mod(angle +
+                                                        sin(-radius + time) * 2.0,2.0*pi)
+                                                        * 4.0) + 1.0;
+                                                        color = vec3(gradient/3.0,
+                                                        gradient / 2.0, gradient);
+                                                        break;
+                                                        }
+                                                        else if (effect_number==4.0)
+                                                        {
+                                                        float dist_from_center_y =
+                                                        length(centered_coord.y);
+                                                        u = 8.0/dist_from_center_y +
+                                                        16.0*time;
+                                                        v = (16.0/dist_from_center_y)*
+                                                        centered_coord.x + sin(time) *
+                                                        8.0;
+                                                        
+                                                        fade = dist_from_center_y * 2.0;
+                                                        gradient = ((1.0 - pow(sin(u) +
+                                                        1.0, 0.1)) + (1.0 - pow(sin(v) +
+                                                        1.0, 0.1))) * fade;
+                                                        color = vec3(gradient / 2.0,
+                                                        gradient, gradient / 2.0);
+                                                        break;
+                                                        }
+                                                        else if (effect_number==5.0)
+                                                        {
+                                                        u = 8.0 / dist_from_center + 16.0
+                                                        * time;
+                                                        v = angle_from_center * 16.0;
+                                                        
+                                                        fade = dist_from_center * 2.0;
+                                                        gradient = ((1.0 - pow(sin(u) +
+                                                        1.0, 0.1)) + (1.0 - pow(sin(v) +
+                                                        1.0, 0.1))) * fade;
+                                                        color = vec3(gradient * 4.0,
+                                                        gradient, gradient / 2.0);
+                                                        break;
+                                                        }
+                                                        else if (effect_number==6.0)
+                                                        {
+                                                        for (float i=0.0; i<=32.0; i++)
+                                                                                   {
+                                                                                   vec2
+                                                                                   blob_coord = vec2(sin(2.0*i +
+                                                                                   2.0*time) * 0.4, cos(3.0*i + 3.0
+                                                                                   * time) * 0.4);
+                                                                                   gradient
+                                                                                   += ((0.0001 + sin(i*i + 4.0*time)
+                                                                                   * 0.000095)) /
+                                                                                   pow(length(centered_coord -
+                                                                                   blob_coord), 2.75);
+                                                                                   }
+                                                                                   color
+                                                                                   = vec3(gradient, gradient * 2.0,
+                                                                                   gradient / 2.0);
+                                                                                   }
+                                                                                   else
+                                                                                   if (effect_number==7.0)
+                                                                                   {
+                                                                                   gradient
+                                                                                   = 1.0;
+                                                                                   for
+                                                                                   (float i=0.0; i<=16.0; i++)
+                                                                                                          {
+                                                                                                          vec2
+                                                                                                          blob_coord = vec2(sin(32.0*i +
+                                                                                                          0.5*time) * 0.5, cos(256.0*i +
+                                                                                                          1.0 * time) * 0.5);
+                                                                                                          gradient =
+                                                                                                          min(gradient,
+                                                                                                          length(centered_coord -
+                                                                                                          blob_coord));
+                                                                                                          }
+                                                                                                          gradient =
+                                                                                                          pow(sin(gradient), 2.0) * 16.0;
+                                                                                                          color =
+                                                                                                          vec3(gradient / 1.5, gradient /
+                                                                                                          2.0, gradient * 1.5);
+                                                                                                          break;
+                                                                                                          }
+                                                                                                          else if
+                                                                                                          (effect_number==8.0)
+                                                                                                          {
+                                                                                                          float disp
+                                                                                                          = 0.005;
+                                                                                                          float p00
+                                                                                                          =
+                                                                                                          get_bump_height(centered_coord);
+                                                                                                          float p10
+                                                                                                          = get_bump_height(centered_coord
+                                                                                                          + vec2(disp, 0.0));
+                                                                                                          float p01
+                                                                                                          = get_bump_height(centered_coord
+                                                                                                          + vec2(0.0, disp));
+                                                                                                          
+                                                                                                          float dx =
+                                                                                                          p10 - p00;
+                                                                                                          float dy =
+                                                                                                          p01 - p00;
+                                                                                                          
+                                                                                                          vec2
+                                                                                                          light_coord
+                                                                                                          =
+                                                                                                          vec2(sin(time)
+                                                                                                          * 0.3,
+                                                                                                          sin(2.0*time)
+                                                                                                          * 0.3);
+                                                                                                          vec2
+                                                                                                          disp_coord
+                                                                                                          =
+                                                                                                          centered_coord
+                                                                                                          - vec2(dx,
+                                                                                                          dy);
+                                                                                                          gradient =
+                                                                                                          0.1 /
+                                                                                                          length(disp_coord
+                                                                                                          -
+                                                                                                          light_coord);
+                                                                                                          color =
+                                                                                                          vec3(gradient,
+                                                                                                          gradient,
+                                                                                                          gradient *
+                                                                                                          1.25);
+                                                                                                          break;
+                                                                                                          }
+                                                                                                          else if
+                                                                                                          (effect_number==9.0)
+                                                                                                          {
+                                                                                                          vec2
+                                                                                                          rotated_coord;
+                                                                                                          float zoom
+                                                                                                          =
+                                                                                                          sin(time)
+                                                                                                          + 1.25;
+                                                                                                          rotated_coord.x
+                                                                                                          = zoom *
+                                                                                                          (centered_coord.x
+                                                                                                          *
+                                                                                                          cos(time)
+                                                                                                          -
+                                                                                                          centered_coord.y
+                                                                                                          *
+                                                                                                          sin(time));
+                                                                                                          rotated_coord.y
+                                                                                                          = zoom *
+                                                                                                          (centered_coord.y
+                                                                                                          *
+                                                                                                          cos(time)
+                                                                                                          +
+                                                                                                          centered_coord.x
+                                                                                                          *
+                                                                                                          sin(time));
+                                                                                                          
+                                                                                                          vec2 pix =
+                                                                                                          floor(rotated_coord
+                                                                                                          * 8.0);
+                                                                                                          
+                                                                                                          gradient =
+                                                                                                          mod(mod(pix.x,2.0)
+                                                                                                          +
+                                                                                                          mod(pix.y,2.0),2.0);
+                                                                                                          color =
+                                                                                                          vec3(gradient);
+                                                                                                          
+                                                                                                          float
+                                                                                                          raster1 =
+                                                                                                          0.01 /
+                                                                                                          length(centered_coord.y
+                                                                                                          - sin(1.5
+                                                                                                          * time) *
+                                                                                                          0.5);
+                                                                                                          float
+                                                                                                          raster2 =
+                                                                                                          0.01 /
+                                                                                                          length(centered_coord.y
+                                                                                                          - sin(1.5
+                                                                                                          * time +
+                                                                                                          0.3) *
+                                                                                                          0.5);
+                                                                                                          float
+                                                                                                          raster3 =
+                                                                                                          0.01 /
+                                                                                                          length(centered_coord.y
+                                                                                                          - sin(1.5
+                                                                                                          * time +
+                                                                                                          0.6) *
+                                                                                                          0.5);
+                                                                                                          vec3
+                                                                                                          rcolor;
+                                                                                                          if
+                                                                                                          (raster1 >
+                                                                                   0.25 ||
+                                                                                   raster2 >
+                                                        0.25 ||
+                                                        raster3 >
+                0.25)
+                {
+                rcolor = vec3(raster1, 0.0, 0.0);
+                rcolor += vec3(0.0, raster2, 0.0);
+                rcolor += vec3(0.0, 0.0, raster3);
+                color = rcolor;
+                }
+                break;
+                }
+                else if (effect_number==10.0)
+                {
+                for (float i=1.0; i<=128.0; i++)
+                                            {
+                                            vec2 star_pos = vec2(sin(i) * 64.0,
+                                            sin(i*i*i)
+                                            * 64.0);
+                                            float z = mod(i*i - 128.0*time, 256.0);
+                                            float fade = (256.0 - z) / 256.0;
+                                            vec2 blob_coord = star_pos / z;
+                                            gradient += ((fade / 384.0) /
+                                            pow(length(centered_coord
+                                            -
+                                            blob_coord),
+                                            1.5)) *
+                                            (fade *
+                                            fade);
+                                            }
+                                            
+                                            color = vec3(gradient * 2.0, gradient,
+                                            gradient / 2.0);
+                                            break;
+                                            }
+                                            else if (effect_number==11.0)
+                                            {
+                                            float z = sqrt(0.25 - centered_coord.x *
+                                            centered_coord.x - centered_coord.y *
+                                            centered_coord.y);
+                                            vec2 tex = (centered_coord * 32.0) / z;
+                                            
+                                            fade = pow(z,2.0);
+                                            vec2 discolamp = vec2(pow(sin(tex.x + sin(0.5
+                                            * time) * 64.0) + 1.0, 2.0), pow(sin(tex.y +
+                                            sin(0.4 * time) * 128.0) + 1.0, 2.0));
+                                            gradient = (4.0 - discolamp.x - discolamp.y)
+                                            * fade;
+                                            color = vec3(gradient * 4.0, gradient,
+                                            gradient / 2.0);
+                                            break;
+                                            }
+                                            else if (effect_number==12.0)
+                                            {
+                                            const float steps = 64.0;
+                                            float sum = 0.0;
+                                            for (float i=0.0; i<=steps; i++)
+                                                                        {
+                                                                        vec2 light_coord
+                                                                        = centered_coord + vec2(sin(time), sin(time *
+                                                                        1.24));
+                                                                        vec2 displacement
+                                                                        = vec2(mix(centered_coord, 0.25 *
+                                                                        light_coord, (steps - i) / steps));
+                                                                        sum =
+                                                                        mix(get_light(centered_coord + displacement),
+                                                                        sum, 0.9);
+                                                                        }
+                                                                        gradient = sum;
+                                                                        if (gradient
+                                                                        <= 0.1) gradient = length(centered_coord) *
+                                                                           0.25;
+                                                                           color = vec3(gradient * 4.0, gradient,
+                                                                           gradient / 2.0);
+                                                                           break;
+                                                                           }
+                                                                           else if (effect_number==13.0)
+                                                                           {
+                                                                           float xpos = -0.5 + sin(centered_coord.y *
+                                                                           16.0 + time) * 0.06;
+                                                                           float ypos = 0.0 + sin(centered_coord.x *
+                                                                           24.0 + 1.5 * time) * 0.04;
+                                                                           const float z_fractal = 0.4;
+                                                                           
+                                                                           const float iter = 64.0;
+                                                                           const float iter2 = iter / 4.0;
+                                                                           
+                                                                           float z0_r = 0.0;
+                                                                           float z0_i = 0.0;
+                                                                           float z1_r = 0.0;
+                                                                           float z1_i = 0.0;
+                                                                           float p_r = (centered_coord.x + xpos *
+                                                                           z_fractal) / z_fractal;
+                                                                           float p_i = (centered_coord.y + ypos *
+                                                                           z_fractal) / z_fractal;
+                                                                           float d = 0.0;
+                                                                           
+                                                                           float nn;
+                                                                           for (float n=0.0; n<=iter; n++)
+                                                                                                      {
+                                                                                                      z1_r = z0_r *
+                                                                                                      z0_r - z0_i * z0_i + p_r;
+                                                                                                      z1_i = 2.0 *
+                                                                                                      z0_r * z0_i + p_i;
+                                                                                                      d = sqrt(z1_i *
+                                                                                                      z1_i + z1_r * z1_r);
+                                                                                                      z0_r = z1_r;
+                                                                                                      z0_i = z1_i;
+                                                                                                      if (d > iter2)
+                                                                           break;
+                                                                           nn = n;
+                                                                           }
+                                                                           
+                                                                           gradient = (nn / iter) * 4.0;
+                                                                           
+                                                                           color = vec3(gradient * 2.0, gradient,
+                                                                           gradient * 16.0);
+                                                                           break;
+                                                                           }
+                                                                           else if (effect_number==14.0)
+                                                                           {
+                                                                           float zom = 3.5;
+                                                                           float x0 = centered_coord.x * zom;
+                                                                           float y0 = centered_coord.y * zom;
+                                                                           
+                                                                           float x1, y1, mj2;
+                                                                           const float iter = 32.0;
+                                                                           
+                                                                           float posx = sin(time * 2.0) * 0.75;
+                                                                           float posy = sin(time * 1.5) * 0.75;
+                                                                           
+                                                                           float nn;
+                                                                           for (float n=0.0; n<=iter; n++)
+                                                                                                      {
+                                                                                                      x1 = x0*x0 -
+                                                                                                      y0*y0 + posx;
+                                                                                                      y1 = 2.0*x0*y0
+                                                                                                      + posy;
+                                                                                                      mj2 = x1*x1 +
+                                                                                                      y1*y1;
+                                                                                                      x0 = x1; y0 =
+                                                                                                      y1;
+                                                                                                      nn = n;
+                                                                                                      if (mj2 > iter)
+                                                                           break;
+                                                                           }
+                                                                           
+                                                                           gradient = (nn / iter) * 2.0;
+                                                                           
+                                                                           color = vec3(1.0 - gradient, 1.0 -
+                                                                           gradient * 2.0, gradient * 2.0);
+                                                                           }
+                                                                           iii = ii;
+                                                                           }
+                                                                           
+                                                                           color.r *= (sin(effect_group.x *
+                                                                           (iii+1.0)) * 0.5 + 0.5);
+                                                                           color.g *= (sin(effect_group.x +
+                                                                           effect_group.y * (iii*iii*iii)) * 0.5 +
+                                                                           0.5);
+                                                                           color.b *= (sin(effect_group.x *
+                                                                           effect_group.y* (iii*iii+1.5)) * 0.5 +
+                                                                           0.5);
+                                                                           
+                                                                           gl_FragColor = vec4(color, 1.0 );
+                                                                           }
+                                                                           </div>
+
+
+  <canvas></canvas>
+  <script src="circles.js"></script>
 </body>
+
+
+
