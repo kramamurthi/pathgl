@@ -37,6 +37,14 @@ function compileShader (type, src) {
   return shader
 }
 
+pathgl.shaderParameters = {
+  rgb: [0,0,0, 0]
+, xyz: [0,0,0]
+, time: [0]
+, resolution: [ innerWidth, innerHeight ]
+, mouse: pathgl.mouse = [0, 0]
+}
+
 function initShaders() {
   var vertexShader = compileShader(ctx.VERTEX_SHADER, pathgl.vertex)
   var fragmentShader = compileShader(ctx.FRAGMENT_SHADER, pathgl.fragment)
@@ -49,27 +57,18 @@ function initShaders() {
 
   if (! ctx.getProgramParameter(program, ctx.LINK_STATUS)) return console.error("Shader is broken")
 
-  var shaderParameters = {
-      rgb: [0,0,0, 0]
-    //, uPmatrix: pmatrix
-    , xyz: [0,0,0]
-    , time: [0]
-    , resolution: [ innerWidth, innerHeight ]
-    , mouse: pathgl.mouse = [0, 0]
-  }
+  each(pathgl.shaderParameters, bindUniform)
 
-  each(shaderParameters, bindUniform)
+  program.vertexPosition = ctx.getAttribLocation(program, "aVertexPosition")
+  ctx.enableVertexAttribArray(program.vertexPosition)
 
-  program.vertexPositionLoc = ctx.getAttribLocation(program, "aVertexPosition")
-  ctx.enableVertexAttribArray(program.vertexPositionLoc)
-
-  program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
-  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, projection(0, innerWidth / 2, 0, 500, -1, 1))
+  program.uPMatrix = ctx.getUniformLocation(program, "uPMatrix")
+  ctx.uniformMatrix4fv(program.uPMatrix, 0, projection(0, innerWidth / 2, 0, 500, -1, 1))
  }
 
 function bindUniform(val, key) {
   program[key] = ctx.getUniformLocation(program, key)
-  if (val) ctx['uniform' + val.length  +  'fv'](program[key], val)
+  if (val) ctx['uniform' + val.length + 'fv'](program[key], val)
 }
 
 function initContext(canvas) {
