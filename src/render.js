@@ -14,7 +14,7 @@ function addLine(x1, y1, x2, y2) {
 }
 
 function drawPath(node) {
-  return node.buffer && drawPolygon.call(node, node.buffer)
+  if (node.buffer) drawPolygon.call(node, node.buffer)
 
   setStroke(d3.rgb(node.attr.stroke))
 
@@ -28,7 +28,7 @@ function drawPath(node) {
 }
 
 function render() {
-  canvas.rerender = true
+  canvas.__rerender__ = true
 }
 
 function setStroke (c) {

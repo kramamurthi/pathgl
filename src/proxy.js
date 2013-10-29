@@ -31,7 +31,6 @@ svgDomProxy.prototype =
         this.buffer && drawPolygon.call(this, this.buffer)
       }
     , cy: function (cy) {
-
         this.buffer && drawPolygon.call(this, this.buffer)
       }
 
@@ -48,6 +47,8 @@ svgDomProxy.prototype =
         this.path && extend(this.path, { coords: [], length: 0 })
 
         if (d.match(/NaN/)) return console.warn('path is invalid')
+
+        render()
 
         parse.call(this, d)
       }
@@ -101,7 +102,7 @@ function drawPolygon(buffer) {
   if (! this.attr) return
   ctx.uniform3f(program.xyz, this.attr.cx || 0, this.attr.cy || 0, 0)
 
-  //points = flatten(points)
+  // points = flatten(points)
   ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
 
   ctx.vertexAttribPointer(0, 3, ctx.FLOAT, false, 0, 0)

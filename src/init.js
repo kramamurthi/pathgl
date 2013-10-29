@@ -1,6 +1,8 @@
 pathgl.initShaders = initShaders
 
-function init(canvas) {
+var canvas
+function init(c) {
+  canvas = c
   ctx = initContext(canvas)
   initShaders()
   override(canvas)
@@ -11,7 +13,7 @@ function init(canvas) {
       pathgl.mouse && ctx.uniform2fv(program.mouse, pathgl.mouse),
       canvas.__scene__.forEach(drawPath)
   })
-  return ctx
+  return ctx ? canvas : null
 }
 
 function override(canvas) {

@@ -1,6 +1,8 @@
 pathgl.initShaders = initShaders
 
-function init(canvas) {
+var canvas
+function init(c) {
+  canvas = c
   ctx = initContext(canvas)
   initShaders()
   override(canvas)
@@ -11,7 +13,7 @@ function init(canvas) {
       pathgl.mouse && ctx.uniform2fv(program.mouse, pathgl.mouse),
       canvas.__scene__.forEach(drawPath)
   })
-  return ctx
+  return ctx ? canvas : null
 }
 
 function override(canvas) {
@@ -138,7 +140,7 @@ function parse (str) {
 }
 
 function moveTo(x, y) {
-  pos = [x, canv.height - y]
+  pos = [x, canvas.height - y]
 }
 
 var subpathStart
@@ -149,7 +151,7 @@ function closePath(next) {
 
 
 function lineTo(x, y) {
-  addLine.apply(this, pos.concat(pos = [x, canv.height - y]))
+  addLine.apply(this, pos.concat(pos = [x, canvas.height - y]))
 }
 function svgDomProxy(el, canvas) {
   if (! (this instanceof svgDomProxy)) return new svgDomProxy(el, this);
@@ -184,7 +186,6 @@ svgDomProxy.prototype =
         this.buffer && drawPolygon.call(this, this.buffer)
       }
     , cy: function (cy) {
-
         this.buffer && drawPolygon.call(this, this.buffer)
       }
 
@@ -201,6 +202,8 @@ svgDomProxy.prototype =
         this.path && extend(this.path, { coords: [], length: 0 })
 
         if (d.match(/NaN/)) return console.warn('path is invalid')
+
+        render()
 
         parse.call(this, d)
       }
@@ -254,7 +257,7 @@ function drawPolygon(buffer) {
   if (! this.attr) return
   ctx.uniform3f(program.xyz, this.attr.cx || 0, this.attr.cy || 0, 0)
 
-  //points = flatten(points)
+  // points = flatten(points)
   ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
 
   ctx.vertexAttribPointer(0, 3, ctx.FLOAT, false, 0, 0)
@@ -299,7 +302,7 @@ function addLine(x1, y1, x2, y2) {
 }
 
 function drawPath(node) {
-  return node.buffer && drawPolygon.call(node, node.buffer)
+  if (node.buffer) drawPolygon.call(node, node.buffer)
 
   setStroke(d3.rgb(node.attr.stroke))
 
@@ -313,7 +316,7 @@ function drawPath(node) {
 }
 
 function render() {
-  canvas.rerender = true
+  canvas.__rerender__ = true
 }
 
 function setStroke (c) {
