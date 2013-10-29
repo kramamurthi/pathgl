@@ -1,16 +1,10 @@
-function pathgl(canvas, svg) {
-  init(d3.select(canvas).node())
-  return ctx ? canvas : svg
+function pathgl(canvas) {
+  return init('string' == typeof canvas ? d3.select(canvas).node() :
+              canvas instanceof d3.selection ? canvas.node() :
+              canvas
+             )
 }
 
-var id = 0
-  , scene = [] //array of objects
-  , pos = [] //current subpath position
-
-  , pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1) //ortho
-
-  , canv, ctx, program
-  , r, g, b // shader params
-  , rerender
+var ctx
 
 this.pathgl = pathgl
