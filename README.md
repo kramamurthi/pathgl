@@ -1,8 +1,16 @@
 pathgl
 ======
-
-draw svg paths using webgl
-
+This is a function that lets you control webgl with d3.
+#usage
+```
+var selector = pathgl('canvas') || 'svg'
+d3.select(selector).append('circle')
+.attr('r', 100)
+.attr('cx',50)
+.attr('cy',50)
+```
+if webgl is available then your circles will be WEBGL, if not, fallback to svg
+it just werks
 
 ### TODO ###
 fill: tesselate shapes into triangles 
