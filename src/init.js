@@ -1,9 +1,16 @@
 pathgl.initShaders = initShaders
 
 function init(canvas) {
-  initContext(canvas)
-  initShaders(ctx)
+  ctx = initContext(canvas)
+  initShaders()
   override(canvas)
+  d3.select(canvas).on('mousemove', function () { pathgl.mouse = d3.mouse(this) })
+  d3.timer(function (elapsed) {
+    if (canvas.__rerender__ || pathgl.forceRerender)
+      ctx.uniform1f(program.time, pathgl.time = elapsed / 1000),
+      pathgl.mouse && ctx.uniform2fv(program.mouse, pathgl.mouse),
+      canvas.__scene__.forEach(drawPath)
+  })
   return ctx
 }
 
@@ -12,8 +19,12 @@ function override(canvas) {
                 { appendChild: svgDomProxy
                 , querySelectorAll: querySelectorAll
                 , querySelector: querySelector
+                , __scene__: []
+                , __pos__: []
+                , __ctx__: void 0
+                , __program__: void 0
+                , __id__: 0
                 })
-
 }
 
 function compileShader (type, src) {
@@ -21,7 +32,6 @@ function compileShader (type, src) {
   ctx.shaderSource(shader, src)
   ctx.compileShader(shader)
   if (! ctx.getShaderParameter(shader, ctx.COMPILE_STATUS)) throw new Error(ctx.getShaderInfoLog(shader))
-
   return shader
 }
 
@@ -43,7 +53,7 @@ function initShaders() {
     , xyz: [0,0,0]
     , time: [0]
     , resolution: [ innerWidth, innerHeight ]
-    , mouse: [0, 0]
+    , mouse: pathgl.mouse = [0, 0]
   }
 
   each(shaderParameters, bindUniform)
@@ -52,7 +62,7 @@ function initShaders() {
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
-  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
+  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, projection(0, innerWidth / 2, 0, 500, -1, 1))
  }
 
 function bindUniform(val, key) {
@@ -61,11 +71,11 @@ function bindUniform(val, key) {
 }
 
 function initContext(canvas) {
-  ctx = canvas.getContext('webgl')
+  var ctx = canvas.getContext('webgl')
   if (! ctx) return
   ctx.viewportWidth = canvas.width || innerWidth
   ctx.viewportHeight = canvas.height || innerHeight
-  d3.select(canvas).on('mousemove', function () { mouse = d3.mouse(this) })
+  return ctx
 }
 
 

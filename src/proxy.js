@@ -1,20 +1,20 @@
-function svgDomProxy(el) {
-  if (! (this instanceof svgDomProxy)) return new svgDomProxy(el);
+function svgDomProxy(el, canvas) {
+  if (! (this instanceof svgDomProxy)) return new svgDomProxy(el, this);
 
-  scene.push(this)
+  canvas.__scene__.push(this)
 
   this.tagName = el.tagName
-  this.id = id++
+  this.id = canvas.__id__++
   this.attr = { stroke: 'black'
               , fill: 'black'
               }
 }
 
 function querySelector(query) {
-  return querySelectorAll('query')[0]
+  return this.querySelectorAll(query)[0]
 }
 function querySelectorAll(query) {
-  return scene
+  return this.__scene__
 }
 
 var types = []

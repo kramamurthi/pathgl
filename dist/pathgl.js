@@ -1,9 +1,16 @@
 pathgl.initShaders = initShaders
 
 function init(canvas) {
-  initContext(canvas)
-  initShaders(ctx)
+  ctx = initContext(canvas)
+  initShaders()
   override(canvas)
+  d3.select(canvas).on('mousemove', function () { pathgl.mouse = d3.mouse(this) })
+  d3.timer(function (elapsed) {
+    if (canvas.__rerender__ || pathgl.forceRerender)
+      ctx.uniform1f(program.time, pathgl.time = elapsed / 1000),
+      pathgl.mouse && ctx.uniform2fv(program.mouse, pathgl.mouse),
+      canvas.__scene__.forEach(drawPath)
+  })
   return ctx
 }
 
@@ -12,8 +19,12 @@ function override(canvas) {
                 { appendChild: svgDomProxy
                 , querySelectorAll: querySelectorAll
                 , querySelector: querySelector
+                , __scene__: []
+                , __pos__: []
+                , __ctx__: void 0
+                , __program__: void 0
+                , __id__: 0
                 })
-
 }
 
 function compileShader (type, src) {
@@ -21,7 +32,6 @@ function compileShader (type, src) {
   ctx.shaderSource(shader, src)
   ctx.compileShader(shader)
   if (! ctx.getShaderParameter(shader, ctx.COMPILE_STATUS)) throw new Error(ctx.getShaderInfoLog(shader))
-
   return shader
 }
 
@@ -43,7 +53,7 @@ function initShaders() {
     , xyz: [0,0,0]
     , time: [0]
     , resolution: [ innerWidth, innerHeight ]
-    , mouse: [0, 0]
+    , mouse: pathgl.mouse = [0, 0]
   }
 
   each(shaderParameters, bindUniform)
@@ -52,7 +62,7 @@ function initShaders() {
   ctx.enableVertexAttribArray(program.vertexPositionLoc)
 
   program.pMatrixLoc = ctx.getUniformLocation(program, "uPMatrix")
-  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, pmatrix)
+  ctx.uniformMatrix4fv(program.pMatrixLoc, 0, projection(0, innerWidth / 2, 0, 500, -1, 1))
  }
 
 function bindUniform(val, key) {
@@ -61,30 +71,24 @@ function bindUniform(val, key) {
 }
 
 function initContext(canvas) {
-  ctx = canvas.getContext('webgl')
+  var ctx = canvas.getContext('webgl')
   if (! ctx) return
   ctx.viewportWidth = canvas.width || innerWidth
   ctx.viewportHeight = canvas.height || innerHeight
-  d3.select(canvas).on('mousemove', function () { mouse = d3.mouse(this) })
+  return ctx
 }
 
 
 function each(obj, fn) {
   for(var key in obj) fn(obj[key], key, obj)
-}function pathgl(canvas, svg) {
-  init(d3.select(canvas).node())
-  return ctx ? canvas : svg
+}function pathgl(canvas) {
+  return init('string' == typeof canvas ? d3.select(canvas).node() :
+              canvas instanceof d3.selection ? canvas.node() :
+              canvas
+             )
 }
 
-var id = 0
-  , scene = [] //array of objects
-  , pos = [] //current subpath position
-
-  , pmatrix = projection(0, innerWidth / 2, 0, 500, -1, 1) //ortho
-
-  , canv, ctx, program
-  , r, g, b // shader params
-  , rerender
+var ctx
 
 this.pathgl = pathgl
 var methods = { m: moveTo
@@ -147,23 +151,23 @@ function closePath(next) {
 function lineTo(x, y) {
   addLine.apply(this, pos.concat(pos = [x, canv.height - y]))
 }
-function svgDomProxy(el) {
-  if (! (this instanceof svgDomProxy)) return new svgDomProxy(el);
+function svgDomProxy(el, canvas) {
+  if (! (this instanceof svgDomProxy)) return new svgDomProxy(el, this);
 
-  scene.push(this)
+  canvas.__scene__.push(this)
 
   this.tagName = el.tagName
-  this.id = id++
+  this.id = canvas.__id__++
   this.attr = { stroke: 'black'
               , fill: 'black'
               }
 }
 
 function querySelector(query) {
-  return querySelectorAll('query')[0]
+  return this.querySelectorAll(query)[0]
 }
 function querySelectorAll(query) {
-  return scene
+  return this.__scene__
 }
 
 var types = []
@@ -294,15 +298,6 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
-
-var mouse
-d3.timer(function (elapsed) {
-  if (rerender || pathgl.forceRerender)
-    ctx.uniform1f(program.time, pathgl.time = elapsed / 1000),
-    mouse && ctx.uniform2fv(program.mouse, pathgl.mouse = mouse),
-    scene.forEach(drawPath)
-})
-
 function drawPath(node) {
   return node.buffer && drawPolygon.call(node, node.buffer)
 
@@ -318,10 +313,10 @@ function drawPath(node) {
 }
 
 function render() {
-  rerender = true
+  canvas.rerender = true
 }
 
-function setStroke (c){
+function setStroke (c) {
   ctx.uniform4f(program.rgb,
                 c.r / 256,
                 c.g / 256,

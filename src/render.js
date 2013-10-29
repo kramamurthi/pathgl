@@ -13,15 +13,6 @@ function addLine(x1, y1, x2, y2) {
   this[index].numItems = vertices.length / 3
 }
 
-
-var mouse
-d3.timer(function (elapsed) {
-  if (rerender || pathgl.forceRerender)
-    ctx.uniform1f(program.time, pathgl.time = elapsed / 1000),
-    mouse && ctx.uniform2fv(program.mouse, pathgl.mouse = mouse),
-    scene.forEach(drawPath)
-})
-
 function drawPath(node) {
   return node.buffer && drawPolygon.call(node, node.buffer)
 
@@ -37,10 +28,10 @@ function drawPath(node) {
 }
 
 function render() {
-  rerender = true
+  canvas.rerender = true
 }
 
-function setStroke (c){
+function setStroke (c) {
   ctx.uniform4f(program.rgb,
                 c.r / 256,
                 c.g / 256,
