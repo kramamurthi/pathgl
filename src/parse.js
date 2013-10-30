@@ -38,8 +38,9 @@ function parse (str) {
     ;[].push.apply(path.coords, group(coords))
     if (instruction.name == 'closePath' && wow[i+1]) return instruction.call(path, wow[i+1])
 
-    instruction.call ?
-      twoEach(coords, instruction, path) :
+    if ('function' == typeof instruction)
+      coords.length == 1 ? instruction.call(path) : twoEach(coords, instruction, path)
+    else
       console.error(instruction + ' ' + segment[0] + ' is not yet implemented')
   })
 }
