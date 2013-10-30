@@ -24,6 +24,7 @@ function woah () {
     .attr('stroke', stroke)
     .attr('stroke-width', 2.5)
     .attr('fill', 'pink')
+    .attr('transform', 'translate(0, -5)')
     .transition().duration(1000)
     .attr('stroke', stroke)
     .each('end', function k(d, i) {

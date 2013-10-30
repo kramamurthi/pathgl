@@ -17,6 +17,7 @@ function drawPath(node) {
   if (node.buffer) drawPolygon.call(node, node.buffer)
 
   setStroke(d3.rgb(node.attr.stroke))
+  ctx.uniform3f(program.xyz, node.attr.translateX || 0, node.attr.translateY || 0, 0)
 
   var path = node.path
 

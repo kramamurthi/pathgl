@@ -43,6 +43,12 @@ svgDomProxy.prototype =
                    )
       }
 
+    , transform: function (d) {
+        var parse = d3.transform(d)
+        this.attr.translateX = parse.translate[0]
+        this.attr.translateY = parse.translate[1]
+      }
+
     , d: function (d) {
         this.path && extend(this.path, { coords: [], length: 0 })
 
