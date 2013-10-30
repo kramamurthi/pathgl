@@ -10,7 +10,7 @@ d3.select(selector).append('circle')
 .attr('cx',50)
 .attr('cy',50)
 ```
-if webgl is available then your circles will be WEBGL, if not, fallback to svg.
+If webgl is available then your circles will be WEBGL, if not, fallback to svg.
 It just werks.
 
 Alternatively:

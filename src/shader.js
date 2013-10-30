@@ -1,9 +1,3 @@
-pathgl.supportedAttributes =
-  [ 'd'
-  , 'stroke'
-  , 'strokeWidth'
-  ]
-
 pathgl.fragment = [ "precision mediump float;"
                   , "uniform vec4 rgb;"
                   , "uniform float time;"
