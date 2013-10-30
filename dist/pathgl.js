@@ -88,9 +88,10 @@ function each(obj, fn) {
 }
 
 pathgl.shaderParameters = {
-  rgb: [0,0,0, 0]
-, xyz: [0,0,0]
+  rgb: [0, 0, 0, 0]
+, xyz: [0, 0, 0]
 , time: [0]
+, rotation: [0, 0]
 , resolution: [ innerWidth, innerHeight ]
 , mouse: pathgl.mouse = [0, 0]
 }
@@ -216,6 +217,8 @@ svgDomProxy.prototype =
         var parse = d3.transform(d)
         this.attr.translateX = parse.translate[0]
         this.attr.translateY = parse.translate[1]
+        var radians = parse.rotate * Math.PI / 180
+        this.attr.rotation = [ Math.sin(radians), Math.cos(radians) ]
       }
 
     , d: function (d) {
@@ -326,6 +329,7 @@ function drawPath(node) {
 
   setStroke(d3.rgb(node.attr.stroke))
   ctx.uniform3f(program.xyz, node.attr.translateX || 0, node.attr.translateY || 0, 0)
+  ctx.uniform2fv(program.rotation, node.attr.rotation)
 
   var path = node.path
 
@@ -359,8 +363,12 @@ pathgl.fragment = [ "precision mediump float;"
 pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "uniform mat4 uPMatrix;"
                 , "uniform vec3 xyz;"
+                , "uniform vec2 rotation;"
                 , "void main(void) {"
-                , "  gl_Position = uPMatrix * vec4(xyz + aVertexPosition, 1.0);"
+                , "vec3 rotatedPosition = vec3(aVertexPosition.x * rotation.y + aVertexPosition.y * rotation.y, "
+                                            + "aVertexPosition.y * rotation.y + aVertexPosition.x * rotation.x,"
+                                            + "aVertexPosition.z);"
+                , "  gl_Position = uPMatrix * vec4(xyz + rotatedPosition, 1.0);"
                 , "}"
                 ].join('\n')
 function extend (a, b) {

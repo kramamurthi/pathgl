@@ -6,9 +6,10 @@ function pathgl(canvas) {
 }
 
 pathgl.shaderParameters = {
-  rgb: [0,0,0, 0]
-, xyz: [0,0,0]
+  rgb: [0, 0, 0, 0]
+, xyz: [0, 0, 0]
 , time: [0]
+, rotation: [0, 0]
 , resolution: [ innerWidth, innerHeight ]
 , mouse: pathgl.mouse = [0, 0]
 }
