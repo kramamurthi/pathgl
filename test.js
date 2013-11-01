@@ -13,28 +13,31 @@ d3.select(window).on('load', function () {
 })
 //geo, hexbin, force, arc
 function woah () {
-  //start
   function test (b) {
     var join = d3.select(b ? 'svg' : pathgl('canvas'))
-           .selectAll('path')
-           .data(data)
+               .selectAll('path')
+               .data(data)
 
-    join.enter().append('path')
+    var enter = join.enter().append('path')
     .attr('d', function (d) { return d.toString() })
     .attr('stroke', stroke)
     .attr('stroke-width', 2.5)
     .attr('fill', 'pink')
-    .attr('transform', 'rotate(15)')
-    .transition().duration(1000)
+    .attr('transform', 'rotate(10, 350, 300)')
+
+
+    enter.transition().duration(1000)
     .attr('stroke', stroke)
     .each('end', function k(d, i) {
-      if (i == 0 && (this.parentElement || {}).tagName == 'svg')
-        strokes = rando()
+      if (i == 0 && this.parentElement.tagName == 'svg') strokes = rando()
+
       join.transition().duration(1000)
       .attr('stroke', stroke)
       .each('end', k)
       .attr('d', function (d) { return d.toString() })
     })
+
+      return enter
   }
 
   var x = 1
@@ -64,8 +67,8 @@ function woah () {
   }, 1000)
 
   var strokes = rando()
-  test(1)
-  test(0)
+  svg  = test(1)
+  webgl = test(0)
 
   function color(selection) {
     selection.transition().duration(1000).attr('stroke', stroke)
@@ -98,5 +101,4 @@ function woah () {
   function heart () {
     return "M232 112L232 110L223 99L210 89L202 87L175 87L168 90L165 96L163 103L163 124L174 139L182 146L197 156L210 160L224 171L234 185L238 196L238 202L238 195L231 184L230 172L237 162L260 148L273 133L281 115L281 102L275 90L264 82L249 78L228 77L222 83L219 95L220 108L226 113Z"
   }
-  //end
 }

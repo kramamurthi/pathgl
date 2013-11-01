@@ -40,3 +40,11 @@ transform: translate
 
 * antialiasing
 * event listeners
+
+
+
+###Extensions to d3 syntax
+.attr('fill', '#shader') //if fill attr starts with a dot or hash, select the
+matching element and evaluate it as a fragment shader
+
+

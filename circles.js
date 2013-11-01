@@ -16,8 +16,9 @@ d3.selectAll('[id]').each(function () {
 
 d3.select('canvas').attr('height', innerHeight).attr('width', innerWidth)
 
-var data = d3.range(1e3).map(function (d) { return [ Math.random() * w / 2
-                                                   , Math.random() * h  / 2] })
+var data = d3.range(1e3)
+           .map(function (d) { return [ Math.random() * w / 2
+                                      , Math.random() * h  / 2] })
 
 var c = d3.select(pathgl('canvas'))
         .attr('height', h)
@@ -33,7 +34,7 @@ function random_color() { return '#' + Math.floor(Math.random() * 0xffffff).toSt
 d3.select('canvas').on('click', function () {
   random_shader()
 
-  c.transition().duration(1000)
+  c.transition().duration(2000).ease('cubic').duration(function (_, i) { return i})
   .attr('cx', function (){ return Math.random() * innerWidth})
   .attr('cy', function (){ return Math.random() * innerHeight})
 })
@@ -43,7 +44,6 @@ function random_shader () {
   var selection = d3.selectAll('.select')
     , index = ~~ (Math.random() * (selection.size()))
     , handler = selection[0][index]
-  console.log(index)
   return handler.textContent == current_shader ?
     random_shader() :
     handler.__onclick()

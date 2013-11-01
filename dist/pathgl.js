@@ -81,18 +81,18 @@ function initContext(canvas) {
 function each(obj, fn) {
   for(var key in obj) fn(obj[key], key, obj)
 }function pathgl(canvas) {
-  return init('string' == typeof canvas ? d3.select(canvas).node() :
-              canvas instanceof d3.selection ? canvas.node() :
-              canvas
-             )
+  canvas = 'string' == typeof canvas ? d3.select(canvas).node() :
+    canvas instanceof d3.selection ? canvas.node() :
+    canvas
+  return init(canvas)
 }
 
 pathgl.shaderParameters = {
   rgb: [0, 0, 0, 0]
-, xyz: [0, 0, 0]
+, xy: [0, 0]
 , time: [0]
-, rotation: [0, 0]
-, resolution: [ innerWidth, innerHeight ]
+, rotation: [0, 1]
+, resolution: [innerWidth, innerHeight]
 , mouse: pathgl.mouse = [0, 0]
 }
 
@@ -141,15 +141,16 @@ function parse (str) {
 
   if (path.length) return render()
 
-  str.match(/[a-z][^a-z]*/ig).forEach(function (segment, i, wow) {
+  str.match(/[a-z][^a-z]*/ig).forEach(function (segment, i, match) {
     var instruction = methods[segment[0].toLowerCase()]
       , coords = segment.slice(1).trim().split(/,| /g)
 
     ;[].push.apply(path.coords, group(coords))
-    if (instruction.name == 'closePath' && wow[i+1]) return instruction.call(path, wow[i+1])
+    if (instruction.name == 'closePath' && match[i+1]) return instruction.call(path, match[i+1])
 
-    instruction.call ?
-      twoEach(coords, instruction, path) :
+    if ('function' == typeof instruction)
+      coords.length == 1 ? instruction.call(path) : twoEach(coords, instruction, path)
+    else
       console.error(instruction + ' ' + segment[0] + ' is not yet implemented')
   })
 }
@@ -175,9 +176,8 @@ function svgDomProxy(el, canvas) {
 
   this.tagName = el.tagName
   this.id = canvas.__id__++
-  this.attr = { stroke: 'black'
-              , fill: 'black'
-              }
+  this.attr = {}
+  this.parentElement = canvas
 }
 
 function querySelector(query) {
@@ -217,8 +217,11 @@ svgDomProxy.prototype =
         var parse = d3.transform(d)
         this.attr.translateX = parse.translate[0]
         this.attr.translateY = parse.translate[1]
-        var radians = parse.rotate * Math.PI / 180
+
+        var radians = (360 - parse.rotate) * Math.PI / 180
+
         this.attr.rotation = [ Math.sin(radians), Math.cos(radians) ]
+        render()
       }
 
     , d: function (d) {
@@ -278,7 +281,7 @@ function buildBuffer(points){
 
 function drawPolygon(buffer) {
   if (! this.attr) return
-  ctx.uniform3f(program.xyz, this.attr.cx || 0, this.attr.cy || 0, 0)
+  ctx.uniform2f(program.xy, this.attr.cx || 0, this.attr.cy || 0)
 
   // points = flatten(points)
   ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
@@ -301,7 +304,7 @@ function circlePoints(r) {
   if (memo[r]) return memo[r]
 
   var a = []
-  for (var i = 0; i < 360; i+=25)
+  for (var i = 0; i < 360; i+=18)
     a.push(50 + r * Math.cos(i * Math.PI / 180),
            50 + r * Math.sin(i * Math.PI / 180),
            0
@@ -328,11 +331,11 @@ function drawPath(node) {
   if (node.buffer) drawPolygon.call(node, node.buffer)
 
   setStroke(d3.rgb(node.attr.stroke))
-  ctx.uniform3f(program.xyz, node.attr.translateX || 0, node.attr.translateY || 0, 0)
-  ctx.uniform2fv(program.rotation, node.attr.rotation)
+  ctx.uniform2f(program.xy, node.attr.translateX || 0, node.attr.translateY || 0)
+  node.attr.rotation && ctx.uniform2fv(program.rotation, node.attr.rotation)
 
   var path = node.path
-
+  
   for (var i = 0; i < path.length; i++) {
     ctx.bindBuffer(ctx.ARRAY_BUFFER, path[i])
     ctx.vertexAttribPointer(program.vertexPositionLoc, path[i].itemSize, ctx.FLOAT, false, 0, 0)
@@ -362,13 +365,24 @@ pathgl.fragment = [ "precision mediump float;"
 
 pathgl.vertex = [ "attribute vec3 aVertexPosition;"
                 , "uniform mat4 uPMatrix;"
-                , "uniform vec3 xyz;"
+                , "uniform vec2 xy;"
+                , "uniform vec2 resolution;"
                 , "uniform vec2 rotation;"
                 , "void main(void) {"
-                , "vec3 rotatedPosition = vec3(aVertexPosition.x * rotation.y + aVertexPosition.y * rotation.y, "
-                                            + "aVertexPosition.y * rotation.y + aVertexPosition.x * rotation.x,"
-                                            + "aVertexPosition.z);"
-                , "  gl_Position = uPMatrix * vec4(xyz + rotatedPosition, 1.0);"
+
+                , "vec2 rotated_position = vec2(aVertexPosition.x * rotation.y + aVertexPosition.y * rotation.x, "
+                                              + "aVertexPosition.y * rotation.y - aVertexPosition.x * rotation.x);"
+
+                , "vec2 position = vec2(rotated_position.x +xy.x, rotated_position.y + xy.y );"
+
+                , "vec2 zeroToOne = position / resolution;"
+                , "vec2 zeroToTwo = zeroToOne * 2.0;"
+                , "vec2 clipSpace = zeroToTwo - 1.0;"
+
+
+                , "gl_Position = vec4(clipSpace * vec2(1, 1), 1, 1);"
+
+
                 , "}"
                 ].join('\n')
 function extend (a, b) {

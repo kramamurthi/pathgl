@@ -31,12 +31,12 @@ function parse (str) {
 
   if (path.length) return render()
 
-  str.match(/[a-z][^a-z]*/ig).forEach(function (segment, i, wow) {
+  str.match(/[a-z][^a-z]*/ig).forEach(function (segment, i, match) {
     var instruction = methods[segment[0].toLowerCase()]
       , coords = segment.slice(1).trim().split(/,| /g)
 
     ;[].push.apply(path.coords, group(coords))
-    if (instruction.name == 'closePath' && wow[i+1]) return instruction.call(path, wow[i+1])
+    if (instruction.name == 'closePath' && match[i+1]) return instruction.call(path, match[i+1])
 
     if ('function' == typeof instruction)
       coords.length == 1 ? instruction.call(path) : twoEach(coords, instruction, path)

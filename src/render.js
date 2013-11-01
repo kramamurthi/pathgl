@@ -17,11 +17,11 @@ function drawPath(node) {
   if (node.buffer) drawPolygon.call(node, node.buffer)
 
   setStroke(d3.rgb(node.attr.stroke))
-  ctx.uniform3f(program.xyz, node.attr.translateX || 0, node.attr.translateY || 0, 0)
-  ctx.uniform2fv(program.rotation, node.attr.rotation)
+  ctx.uniform2f(program.xy, node.attr.translateX || 0, node.attr.translateY || 0)
+  node.attr.rotation && ctx.uniform2fv(program.rotation, node.attr.rotation)
 
   var path = node.path
-
+  
   for (var i = 0; i < path.length; i++) {
     ctx.bindBuffer(ctx.ARRAY_BUFFER, path[i])
     ctx.vertexAttribPointer(program.vertexPositionLoc, path[i].itemSize, ctx.FLOAT, false, 0, 0)

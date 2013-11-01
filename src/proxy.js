@@ -5,9 +5,8 @@ function svgDomProxy(el, canvas) {
 
   this.tagName = el.tagName
   this.id = canvas.__id__++
-  this.attr = { stroke: 'black'
-              , fill: 'black'
-              }
+  this.attr = {}
+  this.parentElement = canvas
 }
 
 function querySelector(query) {
@@ -47,8 +46,11 @@ svgDomProxy.prototype =
         var parse = d3.transform(d)
         this.attr.translateX = parse.translate[0]
         this.attr.translateY = parse.translate[1]
-        var radians = parse.rotate * Math.PI / 180
+
+        var radians = (360 - parse.rotate) * Math.PI / 180
+
         this.attr.rotation = [ Math.sin(radians), Math.cos(radians) ]
+        render()
       }
 
     , d: function (d) {
@@ -108,7 +110,7 @@ function buildBuffer(points){
 
 function drawPolygon(buffer) {
   if (! this.attr) return
-  ctx.uniform3f(program.xyz, this.attr.cx || 0, this.attr.cy || 0, 0)
+  ctx.uniform2f(program.xy, this.attr.cx || 0, this.attr.cy || 0)
 
   // points = flatten(points)
   ctx.bindBuffer(ctx.ARRAY_BUFFER, buffer)
@@ -131,7 +133,7 @@ function circlePoints(r) {
   if (memo[r]) return memo[r]
 
   var a = []
-  for (var i = 0; i < 360; i+=25)
+  for (var i = 0; i < 360; i+=18)
     a.push(50 + r * Math.cos(i * Math.PI / 180),
            50 + r * Math.sin(i * Math.PI / 180),
            0
